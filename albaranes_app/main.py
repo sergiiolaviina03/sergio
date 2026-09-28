@@ -184,8 +184,11 @@ def parse_number_line(line: str) -> str:
     return line.split("#", 1)[0].strip()
 
 
-def index_albaranes_folder(folder: str, log) -> dict:
-    """Devuelve {numero_normalizado: ruta_archivo} a partir de los nombres de archivo."""
+LARGE_FOLDER_WARNING_THRESHOLD = 1000
+
+
+def index_albaranes_folder(folder: str, log) -> tuple[dict, int]:
+    """Devuelve ({numero_normalizado: ruta_archivo}, total de PDFs en la carpeta)."""
     index = {}
     token_re = re.compile(FILENAME_TOKEN_PATTERN)
     count = 0
@@ -198,18 +201,27 @@ def index_albaranes_folder(folder: str, log) -> dict:
             if key and key not in index:
                 index[key] = str(path)
     log(f"Indexados {count} PDF(s) en la carpeta de albaranes.")
-    return index
+    return index, count
 
 
 def find_by_content(number: str, folder: str, already_matched: set, use_ocr: bool, log) -> str | None:
     target = normalize(number)
+    if not target:
+        return None
+    # Busca el número como una tira de dígitos independiente (con ceros a la
+    # izquierda opcionales), no como fragmento suelto dentro de otro número
+    # más largo. Concatenar todo el texto de la página y buscar subcadena
+    # (como se hacía antes) genera muchos falsos positivos en carpetas con
+    # miles de PDFs, donde el número puede "aparecer" por pura casualidad.
+    content_pattern = re.compile(r"(?<!\d)0*" + re.escape(target) + r"(?!\d)")
+
     for path in Path(folder).rglob("*.pdf"):
         spath = str(path)
         if spath in already_matched:
             continue
         try:
             for text in get_page_texts(spath, log, use_ocr):
-                if target in re.sub(r"[^A-Z0-9]", "", text.upper()):
+                if content_pattern.search(text):
                     return spath
         except Exception as e:
             log(f"  Aviso: no se pudo leer {path.name}: {e}")
@@ -382,24 +394,41 @@ class App(tk.Tk):
 
     def _generate_worker(self, numbers, folder, output_path, search_content, use_ocr):
         self.log(f"Indexando carpeta de albaranes: {folder}")
-        index = index_albaranes_folder(folder, self.log)
+        index, total_files = index_albaranes_folder(folder, self.log)
+
+        if search_content and total_files > LARGE_FOLDER_WARNING_THRESHOLD:
+            self.log(
+                f"AVISO: la carpeta tiene {total_files} PDFs. Con tantos archivos mezclados, "
+                "la búsqueda por contenido puede ser muy lenta y, si el número buscado es "
+                "corto, encontrar coincidencias casuales en documentos que no tienen relación "
+                "(otro albarán, una factura, etc.). Revisa bien las coincidencias encontradas "
+                "por esta vía en el resultado final. Si puedes, usa una carpeta específica solo "
+                "con tus albaranes en vez de toda la carpeta de Descargas: irá más rápido y con "
+                "menos errores."
+            )
 
         writer = PdfWriter()
         matched_files: set = set()
         found_count = 0
         missing = []
+        via_content = []
         last_size = (A4_WIDTH, A4_HEIGHT)
 
         for i, raw_number in enumerate(numbers, start=1):
             key = normalize(raw_number)
             file_path = index.get(key)
+            matched_by_content = False
 
             if not file_path and search_content:
                 self.log(f"[{i}/{len(numbers)}] '{raw_number}' no está en ningún nombre de archivo, buscando en el contenido...")
                 file_path = find_by_content(raw_number, folder, matched_files, use_ocr, self.log)
+                matched_by_content = file_path is not None
 
             if file_path:
-                self.log(f"[{i}/{len(numbers)}] '{raw_number}' -> {Path(file_path).name}")
+                tag = "  (encontrado por contenido, revisa que sea correcto)" if matched_by_content else ""
+                self.log(f"[{i}/{len(numbers)}] '{raw_number}' -> {Path(file_path).name}{tag}")
+                if matched_by_content:
+                    via_content.append((raw_number, Path(file_path).name))
                 try:
                     reader = PdfReader(file_path)
                     for page in reader.pages:
@@ -426,12 +455,20 @@ class App(tk.Tk):
             self.log("No encontrados: " + ", ".join(missing))
         else:
             self.log("Todos los albaranes se han encontrado.")
+        if via_content:
+            self.log(
+                f"IMPORTANTE: {len(via_content)} de ellos se encontraron por contenido (no por "
+                "nombre de archivo) — revísalos con más cuidado, es más fácil que sean un error:"
+            )
+            for numero, nombre_archivo in via_content:
+                self.log(f"  '{numero}' -> {nombre_archivo}")
 
         self.after(0, lambda: messagebox.showinfo(
             "Completado",
             f"PDF generado en:\n{output_path}\n\n"
             f"Encontrados: {found_count} / {len(numbers)}\n"
-            + (f"No encontrados ({len(missing)}): {', '.join(missing)}" if missing else "Todos encontrados."),
+            + (f"No encontrados ({len(missing)}): {', '.join(missing)}\n" if missing else "Todos encontrados.\n")
+            + (f"\n{len(via_content)} encontrados por contenido (revísalos): ver registro." if via_content else ""),
         ))
 
 
