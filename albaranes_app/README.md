@@ -26,6 +26,27 @@ Si Windows te muestra un aviso de "Windows protegió su PC" al abrir el
 Es normal en archivos `.bat` que no llevan una firma digital de pago; el
 archivo solo instala las librerías de Python y abre la app.
 
+### Si tus PDFs de solicitudes son escaneos (como el ejemplo que me pasaste)
+
+Tus correos de tráfico se imprimen a PDF como **imágenes escaneadas**, sin
+texto seleccionable, así que la app necesita hacer **OCR** (reconocimiento
+óptico de caracteres) para leerlos. Para eso, instala una sola vez
+**Tesseract OCR**:
+
+1. Descarga el instalador desde
+   https://github.com/UB-Mannheim/tesseract/wiki (el de Windows, del
+   proyecto UB-Mannheim).
+2. Durante la instalación, en la lista de componentes/idiomas, marca
+   **"Spanish"** (además del inglés, que viene por defecto).
+3. Deja la carpeta de instalación por defecto y termina la instalación.
+4. Ya puedes usar la app con normalidad: si una página del PDF no tiene
+   texto, se le aplicará OCR automáticamente (puedes desactivarlo con la
+   casilla correspondiente si alguna vez no lo necesitas — así va más
+   rápido con PDFs que sí tienen texto).
+
+Si al extraer ves el aviso "no se encontró Tesseract OCR instalado" en el
+registro de la app, es que falta este paso.
+
 ## Instalación manual (alternativa, o para Mac/Linux)
 
 Necesitas Python 3.10 o superior instalado.
@@ -50,9 +71,26 @@ Se abrirá una ventana:
    guardados los PDFs de albaranes.
 3. **PDF de salida**: dónde se guardará el resultado (se rellena solo, pero
    puedes cambiarlo).
-4. Pulsa **"1) Extraer números de albarán"**. Aparecerá la lista de números
-   detectados, en orden, en el cuadro de texto editable. Revísala: puedes
-   añadir, borrar o corregir líneas a mano si algo no se ha detectado bien.
+4. Pulsa **"1) Extraer números de albarán"**. Aparecerá una línea por cada
+   página del PDF, en orden, con el número/código detectado y un comentario
+   indicando de qué página viene, por ejemplo:
+
+   ```
+   042151    # página 1
+   041577    # página 8 (también aparece: 041072)
+   (sin código detectado)    # página 43 - revisar
+   ```
+
+   **Revisa siempre esta lista antes de continuar.** El texto tras `#` es
+   solo informativo (no afecta a la generación del PDF):
+   - Si una línea dice "(también aparece: ...)", esa página tenía más de un
+     número posible (por ejemplo, un correo que menciona dos albaranes o
+     reenvía uno anterior); comprueba en el PDF original cuál es el correcto
+     y corrige la línea si hace falta.
+   - Si una línea dice "(sin código detectado)", esa página no tenía ningún
+     número reconocible con el formato esperado; puedes escribirlo a mano
+     mirando esa página del PDF, o dejarlo así para que en el resultado
+     final se inserte una hoja en blanco en su lugar.
 5. (Opcional) Marca la casilla para que, si un número no aparece en ningún
    nombre de archivo, también se busque dentro del contenido de los PDFs
    (más lento si tienes muchos archivos).
@@ -69,19 +107,26 @@ Se abrirá una ventana:
   nombre de archivo, abre y lee el texto de los PDFs no usados todavía
   hasta encontrar el número.
 
-## Si el PDF de solicitudes es un escaneo (imagen, sin texto seleccionable)
+## Cómo detecta el número/código en cada página
 
-Esta versión extrae texto directamente del PDF. Si tu PDF de solicitudes es
-una imagen escaneada sin texto real debajo, la extracción automática dará
-0 resultados — en ese caso puedes escribir los números de albarán a mano en
-el cuadro editable (en el orden correcto) y pulsar directamente
-"2) Generar PDF". Si quieres que añada reconocimiento óptico (OCR) para
-estos casos, dímelo y lo incorporo.
+Para cada página prueba, por este orden:
 
-## Ajustar el patrón de detección
+1. Códigos de tipo **"SO123456"** (el formato de los correos de tráfico:
+   "SO" + 6 dígitos). Tolera errores típicos del OCR, que a veces convierte
+   "SO" en "50", "S0" o incluso "$0".
+2. El patrón de la casilla **"Patrón (regex)"** (por defecto, números
+   precedidos de la palabra "Albarán" o "Alb.", útil para otro tipo de
+   documentos que no usen códigos "SO").
 
-El campo "Patrón (regex)" controla cómo se reconoce un número de albarán en
-el texto. Por defecto busca cosas como "Albarán nº 12345" o "Alb. 12345".
-Si tus solicitudes tienen otro formato y la extracción falla, dime cómo
-aparece exactamente el número de albarán en el texto (una frase de ejemplo)
-y ajusto el patrón por defecto.
+Si ninguno encuentra nada en una página, esa línea queda como "(sin código
+detectado)" para que la revises a mano en vez de arriesgarse a adivinar mal.
+
+No todas las páginas de un documento escaneado tienen por qué seguir el
+mismo formato: por ejemplo, si el documento mezcla correos de distintos
+circuitos de transporte (unos con código "SO...", otros con otras
+referencias de mensajería), esas páginas "distintas" se marcarán para
+revisión manual en vez de forzar una coincidencia poco fiable.
+
+Si tus solicitudes tienen otro formato distinto y quieres que lo reconozca
+automáticamente también, dime cómo aparece exactamente el número en el
+texto (una frase de ejemplo) y ajusto el patrón.

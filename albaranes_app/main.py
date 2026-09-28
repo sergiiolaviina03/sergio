@@ -3,8 +3,9 @@
 App de escritorio para asociar albaranes a un PDF de solicitudes.
 
 Flujo:
- 1. Se abre el PDF de "solicitudes" y se extraen los números de albarán,
-    en el orden en que aparecen.
+ 1. Se abre el PDF de "solicitudes" y se extraen los números/códigos de
+    albarán, en el orden en que aparecen. Si una página no tiene texto
+    (documento escaneado), se le aplica OCR automáticamente.
  2. El usuario puede revisar/editar esa lista a mano antes de continuar.
  3. Se busca cada número entre los PDFs de una carpeta local (por nombre
     de archivo, y opcionalmente dentro del contenido del PDF).
@@ -20,16 +21,28 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, scrolledtext
 from pathlib import Path
 
-import pdfplumber
+import pypdfium2 as pdfium
+import pytesseract
 from pypdf import PdfReader, PdfWriter
 
+# Patrón principal: números precedidos de la palabra "Albarán" / "Alb."
 DEFAULT_PATTERN = (
     r"(?:albar[aá]n(?:es)?|alb\.?)\s*(?:n[ºo°\.]?\s*)?:?\s*"
     r"([A-Za-z]?\d[\d\-/\.]{2,})"
 )
-FALLBACK_PATTERN = r"\b\d{4,12}\b"
+# Patrón de respaldo: códigos de tipo "SO123456" (formato usado en los
+# correos de tráfico). Tolera confusiones típicas de OCR: S<->5, O<->0/$.
+SO_CODE_PATTERN = r"[Ss5$][Oo0]\s*(\d{6})"
+
+# Números/códigos de albarán en nombres de archivo: una tira de dígitos
+# (con separadores opcionales tipo guion/punto/barra), ignorando las letras
+# que la rodeen (evita el problema de "O" vs "0" en prefijos tipo "SO").
+FILENAME_TOKEN_PATTERN = r"\d[\d\-/\.]{2,}"
 
 A4_WIDTH, A4_HEIGHT = 595, 842
+OCR_MIN_CHARS = 20
+OCR_SCALE = 2.0
+OCR_LANG = "spa+eng"
 
 
 def normalize(token: str) -> str:
@@ -40,35 +53,107 @@ def normalize(token: str) -> str:
     return stripped or digits_only
 
 
-def extract_albaran_numbers(pdf_path: str, pattern: str, log) -> list[str]:
-    numbers = []
-    with pdfplumber.open(pdf_path) as pdf:
-        for i, page in enumerate(pdf.pages):
-            text = page.extract_text() or ""
-            found = re.findall(pattern, text, flags=re.IGNORECASE)
-            if found:
-                numbers.extend(found)
-            log(f"  Página {i + 1}: {len(found)} coincidencia(s)")
+def check_tesseract_available(log) -> bool:
+    try:
+        pytesseract.get_tesseract_version()
+        return True
+    except Exception:
+        log(
+            "AVISO: no se encontró Tesseract OCR instalado. Las páginas escaneadas (sin "
+            "texto) no se podrán leer. Instálalo desde "
+            "https://github.com/UB-Mannheim/tesseract/wiki (marca el idioma español durante "
+            "la instalación) y vuelve a abrir la app."
+        )
+        return False
 
-    if not numbers:
-        log("  No se encontraron coincidencias con el patrón principal, probando patrón de respaldo...")
-        with pdfplumber.open(pdf_path) as pdf:
-            for page in pdf.pages:
-                text = page.extract_text() or ""
-                numbers.extend(re.findall(FALLBACK_PATTERN, text))
 
-    # Elimina duplicados consecutivos (cabeceras/pies repetidos), conserva orden.
-    deduped = []
-    for n in numbers:
-        if not deduped or normalize(deduped[-1]) != normalize(n):
-            deduped.append(n)
-    return deduped
+def get_page_texts(pdf_path: str, log, use_ocr: bool) -> list[str]:
+    """Devuelve el texto de cada página: primero intenta el texto embebido del PDF;
+    si una página no tiene texto (o casi) y use_ocr está activo, le aplica OCR."""
+    reader = PdfReader(pdf_path)
+    texts = [page.extract_text() or "" for page in reader.pages]
+
+    needs_ocr = [i for i, t in enumerate(texts) if len(t.strip()) < OCR_MIN_CHARS]
+    if not needs_ocr:
+        return texts
+
+    if not use_ocr:
+        log(f"  {len(needs_ocr)} página(s) sin texto (parecen escaneadas) y el OCR está desactivado.")
+        return texts
+
+    if not check_tesseract_available(log):
+        return texts
+
+    log(f"  {len(needs_ocr)} página(s) sin texto: aplicando OCR (puede tardar)...")
+    pdf = pdfium.PdfDocument(pdf_path)
+    try:
+        for i in needs_ocr:
+            page = pdf[i]
+            bitmap = page.render(scale=OCR_SCALE)
+            image = bitmap.to_pil()
+            try:
+                texts[i] = pytesseract.image_to_string(image, lang=OCR_LANG)
+            except Exception as e:
+                log(f"  Aviso: OCR falló en la página {i + 1}: {e}")
+            log(f"  OCR página {i + 1}/{len(pdf)} completado.")
+    finally:
+        pdf.close()
+    return texts
+
+
+def extract_albaran_numbers(pdf_path: str, pattern: str, log, use_ocr: bool) -> list[str]:
+    """Extrae un candidato a número de albarán por página, en orden.
+
+    Cada línea del resultado lleva un comentario "# página N" (y, si en esa
+    página aparece más de un código distinto, también las alternativas) para
+    que puedas cotejarla fácilmente contra el PDF original y corregirla si
+    hiciera falta. Las páginas donde no se detecta ningún código se marcan
+    como "(sin código detectado)" en vez de adivinar.
+    """
+    page_texts = get_page_texts(pdf_path, log, use_ocr)
+
+    lines = []
+    undetected = 0
+    ambiguous = 0
+
+    for i, text in enumerate(page_texts):
+        keyword_matches = re.findall(pattern, text, flags=re.IGNORECASE)
+        so_matches = re.findall(SO_CODE_PATTERN, text)
+
+        # El código tipo "SO123456" suele ser más fiable que una coincidencia
+        # de palabra clave (que a veces arrastra alguna letra suelta del
+        # propio "alb." por errores de OCR), así que se prueba primero.
+        candidates = []
+        for c in so_matches + keyword_matches:
+            if not any(normalize(c) == normalize(existing) for existing in candidates):
+                candidates.append(c)
+
+        page_no = i + 1
+        if not candidates:
+            undetected += 1
+            lines.append(f"(sin código detectado)    # página {page_no} - revisar")
+            log(f"  Página {page_no}: sin código detectado")
+        elif len(candidates) == 1:
+            lines.append(f"{candidates[0]}    # página {page_no}")
+        else:
+            ambiguous += 1
+            alternativas = ", ".join(candidates[1:])
+            lines.append(f"{candidates[0]}    # página {page_no} (también aparece: {alternativas})")
+            log(f"  Página {page_no}: varios códigos encontrados ({', '.join(candidates)}), se usó el primero")
+
+    log(f"Resumen: {len(page_texts)} página(s); {undetected} sin código detectado; {ambiguous} con varios códigos.")
+    return lines
+
+
+def parse_number_line(line: str) -> str:
+    """Quita el comentario '# ...' de una línea de la lista editable y devuelve el código."""
+    return line.split("#", 1)[0].strip()
 
 
 def index_albaranes_folder(folder: str, log) -> dict:
     """Devuelve {numero_normalizado: ruta_archivo} a partir de los nombres de archivo."""
     index = {}
-    token_re = re.compile(r"[A-Za-z]?\d[\d\-/\.]{2,}")
+    token_re = re.compile(FILENAME_TOKEN_PATTERN)
     count = 0
     for path in Path(folder).rglob("*"):
         if path.suffix.lower() != ".pdf":
@@ -82,18 +167,16 @@ def index_albaranes_folder(folder: str, log) -> dict:
     return index
 
 
-def find_by_content(number: str, folder: str, already_matched: set, log) -> str | None:
+def find_by_content(number: str, folder: str, already_matched: set, use_ocr: bool, log) -> str | None:
     target = normalize(number)
     for path in Path(folder).rglob("*.pdf"):
         spath = str(path)
         if spath in already_matched:
             continue
         try:
-            with pdfplumber.open(spath) as pdf:
-                for page in pdf.pages:
-                    text = page.extract_text() or ""
-                    if target in re.sub(r"[^A-Z0-9]", "", text.upper()):
-                        return spath
+            for text in get_page_texts(spath, log, use_ocr):
+                if target in re.sub(r"[^A-Z0-9]", "", text.upper()):
+                    return spath
         except Exception as e:
             log(f"  Aviso: no se pudo leer {path.name}: {e}")
     return None
@@ -103,13 +186,14 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Asociador de Albaranes")
-        self.geometry("820x680")
+        self.geometry("860x700")
 
         self.solicitudes_path = tk.StringVar()
         self.albaranes_folder = tk.StringVar()
         self.output_path = tk.StringVar()
         self.pattern = tk.StringVar(value=DEFAULT_PATTERN)
         self.search_content = tk.BooleanVar(value=False)
+        self.use_ocr = tk.BooleanVar(value=True)
 
         self.log_queue: queue.Queue = queue.Queue()
         self._build_ui()
@@ -134,6 +218,14 @@ class App(tk.Tk):
         frm_opts.pack(fill="x", **pad)
         ttk.Checkbutton(
             frm_opts,
+            text="Usar OCR automáticamente en páginas sin texto (documentos escaneados)",
+            variable=self.use_ocr,
+        ).pack(side="left")
+
+        frm_opts2 = ttk.Frame(self)
+        frm_opts2.pack(fill="x", **pad)
+        ttk.Checkbutton(
+            frm_opts2,
             text="Si no se encuentra por nombre de archivo, buscar también dentro del contenido de los PDFs (más lento)",
             variable=self.search_content,
         ).pack(side="left")
@@ -143,9 +235,13 @@ class App(tk.Tk):
         ttk.Button(frm_btns, text="1) Extraer números de albarán", command=self._on_extract).pack(side="left", padx=4)
         ttk.Button(frm_btns, text="2) Generar PDF", command=self._on_generate).pack(side="left", padx=4)
 
-        ttk.Label(self, text="Números de albarán (uno por línea, en orden — puedes editarlos):").pack(
-            anchor="w", padx=8
-        )
+        ttk.Label(
+            self,
+            text=(
+                "Números de albarán (uno por línea, en orden — puedes editarlos; el texto tras "
+                "'#' es solo informativo, indica de qué página viene):"
+            ),
+        ).pack(anchor="w", padx=8)
         self.numbers_text = scrolledtext.ScrolledText(self, height=12)
         self.numbers_text.pack(fill="both", expand=True, padx=8, pady=4)
 
@@ -196,12 +292,14 @@ class App(tk.Tk):
             messagebox.showerror("Error", "Selecciona primero un PDF de solicitudes válido.")
             return
         pattern = self.pattern.get().strip() or DEFAULT_PATTERN
-        threading.Thread(target=self._extract_worker, args=(pdf_path, pattern), daemon=True).start()
+        threading.Thread(
+            target=self._extract_worker, args=(pdf_path, pattern, self.use_ocr.get()), daemon=True
+        ).start()
 
-    def _extract_worker(self, pdf_path, pattern):
+    def _extract_worker(self, pdf_path, pattern, use_ocr):
         self.log(f"Extrayendo números de albarán de: {pdf_path}")
         try:
-            numbers = extract_albaran_numbers(pdf_path, pattern, self.log)
+            numbers = extract_albaran_numbers(pdf_path, pattern, self.log, use_ocr)
         except Exception as e:
             self.log(f"ERROR al extraer: {e}")
             return
@@ -219,19 +317,20 @@ class App(tk.Tk):
             messagebox.showerror("Error", "Indica dónde guardar el PDF de salida.")
             return
         numbers = [
-            line.strip()
+            parse_number_line(line)
             for line in self.numbers_text.get("1.0", "end").splitlines()
-            if line.strip()
+            if parse_number_line(line)
         ]
         if not numbers:
             messagebox.showerror("Error", "No hay números de albarán en la lista. Extráelos primero o escríbelos a mano.")
             return
         threading.Thread(
-            target=self._generate_worker, args=(numbers, folder, output_path), daemon=True
+            target=self._generate_worker,
+            args=(numbers, folder, output_path, self.search_content.get(), self.use_ocr.get()),
+            daemon=True,
         ).start()
 
-    def _generate_worker(self, numbers, folder, output_path):
-        search_content = self.search_content.get()
+    def _generate_worker(self, numbers, folder, output_path, search_content, use_ocr):
         self.log(f"Indexando carpeta de albaranes: {folder}")
         index = index_albaranes_folder(folder, self.log)
 
@@ -247,7 +346,7 @@ class App(tk.Tk):
 
             if not file_path and search_content:
                 self.log(f"[{i}/{len(numbers)}] '{raw_number}' no está en ningún nombre de archivo, buscando en el contenido...")
-                file_path = find_by_content(raw_number, folder, matched_files, self.log)
+                file_path = find_by_content(raw_number, folder, matched_files, use_ocr, self.log)
 
             if file_path:
                 self.log(f"[{i}/{len(numbers)}] '{raw_number}' -> {Path(file_path).name}")
