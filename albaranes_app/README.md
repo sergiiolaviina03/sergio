@@ -8,13 +8,32 @@ mismo orden. Donde no encuentra un albarán, inserta una hoja en blanco.
 Se ejecuta en tu propio ordenador (no en la nube), porque necesita acceder
 a tus carpetas locales.
 
-## Instalación (una sola vez)
+## Uso en Windows (forma fácil, doble clic)
+
+1. Si no tienes Python instalado, descárgalo una sola vez desde
+   https://www.python.org/downloads/ e instálalo. **Importante**: en el
+   instalador, marca la casilla **"Add Python to PATH"** antes de darle a
+   Instalar.
+2. Haz doble clic en **`Iniciar_App.bat`** (dentro de esta carpeta
+   `albaranes_app`).
+   - La primera vez tardará un poco (prepara la aplicación automáticamente).
+   - Las siguientes veces se abrirá al momento.
+3. Se abrirá la ventana de la aplicación. Sigue los pasos de la sección
+   "Cómo se usa" más abajo.
+
+Si Windows te muestra un aviso de "Windows protegió su PC" al abrir el
+`.bat` (SmartScreen), pulsa "Más información" → "Ejecutar de todas formas".
+Es normal en archivos `.bat` que no llevan una firma digital de pago; el
+archivo solo instala las librerías de Python y abre la app.
+
+## Instalación manual (alternativa, o para Mac/Linux)
 
 Necesitas Python 3.10 o superior instalado.
 
 ```bash
 cd albaranes_app
 pip install -r requirements.txt
+python main.py
 ```
 
 En Windows y macOS, Tkinter (la librería de la ventana) viene incluida con
@@ -22,11 +41,7 @@ Python. En Linux, si al ejecutar la app da un error de `tkinter`, instálalo
 con `sudo apt install python3-tk` (Ubuntu/Debian) o el equivalente de tu
 distribución.
 
-## Uso
-
-```bash
-python main.py
-```
+## Cómo se usa
 
 Se abrirá una ventana:
 
