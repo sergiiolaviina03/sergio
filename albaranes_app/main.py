@@ -53,18 +53,52 @@ def normalize(token: str) -> str:
     return stripped or digits_only
 
 
+# Rutas donde el instalador de Tesseract para Windows lo deja normalmente,
+# por si no se marcó la casilla de añadirlo al PATH durante la instalación.
+WINDOWS_TESSERACT_CANDIDATES = [
+    r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+    r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+    os.path.expandvars(r"%LOCALAPPDATA%\Programs\Tesseract-OCR\tesseract.exe"),
+    os.path.expandvars(r"%LOCALAPPDATA%\Tesseract-OCR\tesseract.exe"),
+]
+
+_tesseract_status: bool | None = None
+
+
 def check_tesseract_available(log) -> bool:
+    """Comprueba si Tesseract está disponible, probando también las rutas de
+    instalación habituales en Windows si no está en el PATH. El resultado se
+    guarda en caché para no repetir el aviso en cada página/archivo."""
+    global _tesseract_status
+    if _tesseract_status is not None:
+        return _tesseract_status
+
     try:
         pytesseract.get_tesseract_version()
+        _tesseract_status = True
         return True
     except Exception:
-        log(
-            "AVISO: no se encontró Tesseract OCR instalado. Las páginas escaneadas (sin "
-            "texto) no se podrán leer. Instálalo desde "
-            "https://github.com/UB-Mannheim/tesseract/wiki (marca el idioma español durante "
-            "la instalación) y vuelve a abrir la app."
-        )
-        return False
+        pass
+
+    for candidate in WINDOWS_TESSERACT_CANDIDATES:
+        if os.path.isfile(candidate):
+            pytesseract.pytesseract.tesseract_cmd = candidate
+            try:
+                pytesseract.get_tesseract_version()
+                log(f"Tesseract OCR encontrado en: {candidate}")
+                _tesseract_status = True
+                return True
+            except Exception:
+                continue
+
+    log(
+        "AVISO: no se encontró Tesseract OCR instalado. Las páginas escaneadas (sin "
+        "texto) no se podrán leer. Instálalo desde "
+        "https://github.com/UB-Mannheim/tesseract/wiki (marca el idioma español durante "
+        "la instalación) y vuelve a abrir la app."
+    )
+    _tesseract_status = False
+    return False
 
 
 def get_page_texts(pdf_path: str, log, use_ocr: bool) -> list[str]:
@@ -198,6 +232,19 @@ class App(tk.Tk):
         self.log_queue: queue.Queue = queue.Queue()
         self._build_ui()
         self.after(100, self._drain_log_queue)
+        self.after(200, self._check_ocr_status)
+
+    def _check_ocr_status(self):
+        if check_tesseract_available(lambda msg: None):
+            self.ocr_status_label.config(text="OCR: listo ✓", foreground="green")
+        else:
+            self.ocr_status_label.config(
+                text=(
+                    "OCR: Tesseract no encontrado. Si tus PDFs son escaneados no se podrán "
+                    "leer — instálalo desde github.com/UB-Mannheim/tesseract/wiki"
+                ),
+                foreground="red",
+            )
 
     def _build_ui(self):
         pad = {"padx": 8, "pady": 4}
@@ -208,6 +255,9 @@ class App(tk.Tk):
         self._path_row(frm_top, "PDF de solicitudes:", self.solicitudes_path, self._pick_solicitudes)
         self._path_row(frm_top, "Carpeta de albaranes:", self.albaranes_folder, self._pick_folder)
         self._path_row(frm_top, "PDF de salida:", self.output_path, self._pick_output)
+
+        self.ocr_status_label = ttk.Label(self, text="OCR: comprobando...")
+        self.ocr_status_label.pack(anchor="w", padx=8)
 
         frm_pattern = ttk.Frame(self)
         frm_pattern.pack(fill="x", **pad)

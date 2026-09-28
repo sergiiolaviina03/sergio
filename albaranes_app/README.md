@@ -38,14 +38,19 @@ texto seleccionable, así que la app necesita hacer **OCR** (reconocimiento
    proyecto UB-Mannheim).
 2. Durante la instalación, en la lista de componentes/idiomas, marca
    **"Spanish"** (además del inglés, que viene por defecto).
-3. Deja la carpeta de instalación por defecto y termina la instalación.
-4. Ya puedes usar la app con normalidad: si una página del PDF no tiene
-   texto, se le aplicará OCR automáticamente (puedes desactivarlo con la
-   casilla correspondiente si alguna vez no lo necesitas — así va más
-   rápido con PDFs que sí tienen texto).
+3. **Deja la carpeta de instalación por defecto** (`C:\Program Files\Tesseract-OCR`)
+   — la app la busca ahí automáticamente aunque no se haya añadido al PATH
+   del sistema, así que no hace falta tocar nada más de configuración.
+4. Termina la instalación y abre (o cierra y vuelve a abrir) la app. Justo
+   debajo de los campos de arriba verás **"OCR: listo ✓"** en verde si todo
+   está bien, o un aviso en rojo si no lo encuentra.
+5. Si una página del PDF no tiene texto, se le aplicará OCR automáticamente
+   (puedes desactivarlo con la casilla correspondiente si alguna vez no lo
+   necesitas — así va más rápido con PDFs que sí tienen texto).
 
-Si al extraer ves el aviso "no se encontró Tesseract OCR instalado" en el
-registro de la app, es que falta este paso.
+Si ves el aviso en rojo o el mensaje "no se encontró Tesseract OCR
+instalado" en el registro, es que Tesseract no está instalado o se instaló
+en una carpeta distinta a la de por defecto.
 
 ## Instalación manual (alternativa, o para Mac/Linux)
 
