@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MemeBot</title>
+<style>
+:root{--bg:#0e1116;--card:#171b22;--line:#262c36;--tx:#e6e9ef;--mut:#8b93a1;--g:#2ecc71;--r:#ff5c5c;--y:#f1c40f;--b:#4da3ff}
+@media (prefers-color-scheme: light){:root{--bg:#f4f6f9;--card:#fff;--line:#dde2ea;--tx:#1b2330;--mut:#667085}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.45 system-ui,sans-serif}
+.wrap{max-width:1200px;margin:0 auto;padding:16px}
+header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:14px}
+h1{margin:0;font-size:20px}h2{margin:0 0 8px;font-size:15px}
+.badge{padding:3px 10px;border-radius:99px;font-weight:600;font-size:12px}
+.paper{background:#4da3ff22;color:var(--b)}.live{background:#ff5c5c22;color:var(--r)}
+.on{background:#2ecc7122;color:var(--g)}.off{background:#8b93a122;color:var(--mut)}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));margin-bottom:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px}
+.k{color:var(--mut);font-size:12px}.v{font-size:22px;font-weight:700}
+.pos{color:var(--g)}.neg{color:var(--r)}
+table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--mut);font-weight:500;font-size:12px}.scroll{overflow-x:auto}
+button{background:var(--b);color:#fff;border:0;border-radius:8px;padding:8px 14px;font-weight:600;cursor:pointer}
+button.red{background:var(--r)}button.gray{background:var(--line);color:var(--tx)}button.sm{padding:3px 9px;font-size:12px}
+input{background:var(--bg);color:var(--tx);border:1px solid var(--line);border-radius:6px;padding:6px 8px;width:100%}
+.two{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(340px,1fr))}
+.settings{display:grid;gap:8px;grid-template-columns:repeat(auto-fill,minmax(210px,1fr))}
+label{font-size:12px;color:var(--mut);display:block}
+.log{font:12px ui-monospace,monospace;max-height:240px;overflow:auto}
+.warn{color:var(--y)}.error{color:var(--r)}
+#login{max-width:340px;margin:12vh auto}
+.note{color:var(--mut);font-size:12px}
+.alert{background:#f1c40f22;border:1px solid var(--y);padding:8px 12px;border-radius:8px;margin-bottom:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div id="login" class="card" hidden>
+  <h2>MemeBot · Acceso</h2>
+  <input id="pw" type="password" placeholder="Contraseña" autocomplete="current-password">
+  <p><button id="loginBtn">Entrar</button> <span id="loginErr" class="neg"></span></p>
+</div>
+<div id="app" hidden>
+<header>
+  <h1>MemeBot <span id="modeB" class="badge"></span> <span id="runB" class="badge"></span></h1>
+  <div>
+    <button id="toggle"></button>
+    <button class="gray" id="logout">Salir</button>
+  </div>
+</header>
+<div id="halt" class="alert" hidden></div>
+<div class="grid" id="kpis"></div>
+<div class="two">
+  <div class="card"><h2>Posiciones abiertas</h2><div class="scroll" id="open"></div></div>
+  <div class="card"><h2>Actividad del bot</h2><div class="log" id="log"></div></div>
+</div>
+<div class="card" style="margin-top:12px"><h2>Historial (últimas 100)</h2><div class="scroll" id="closed"></div></div>
+<div class="two" style="margin-top:12px">
+  <div class="card"><h2>Ajustes de estrategia</h2><div class="settings" id="settings"></div>
+    <p><button id="save">Guardar ajustes</button> <button class="gray" id="reset">Reiniciar simulación</button> <span id="saveMsg" class="note"></span></p>
+    <p class="note">Los cambios se aplican en el siguiente ciclo. Prueba siempre en simulación antes de usar dinero real.</p></div>
+  <div class="card"><h2>Últimos tokens rechazados</h2><div class="scroll" id="rej"></div></div>
+</div>
+<p class="note">Aviso: los memecoins son extremadamente arriesgados. Ningún filtro elimina el riesgo de pérdida total.</p>
+</div>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+const esc=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const f=(n,d=4)=>n==null?'–':Number(n).toFixed(d);
+const cls=n=>n>0?'pos':n<0?'neg':'';
+const px=n=>n==null?'–':(n<0.001?Number(n).toExponential(3):Number(n).toPrecision(5));
+const ago=t=>{const m=(Date.now()/1000-t)/60;return m<1?'ahora':m<60?Math.round(m)+' min':(m/60).toFixed(1)+' h'};
+let timer=null,settingsLoaded=false,S=null;
+async function api(p,opt){const r=await fetch(p,Object.assign({headers:{'Content-Type':'application/json'}},opt));
+  if(r.status===401&&p!=='/api/login'){showLogin();throw 0}
+  const j=await r.json();if(!r.ok)throw new Error(j.error||'error');return j}
+function showLogin(){clearInterval(timer);$('#app').hidden=true;$('#login').hidden=false}
+$('#loginBtn').onclick=async()=>{try{await api('/api/login',{method:'POST',body:JSON.stringify({password:$('#pw').value})});
+  $('#login').hidden=true;$('#app').hidden=false;settingsLoaded=false;start()}catch(e){$('#loginErr').textContent=e.message}};
+$('#pw').onkeydown=e=>{if(e.key==='Enter')$('#loginBtn').click()};
+$('#logout').onclick=async()=>{await api('/api/logout',{method:'POST'});showLogin()};
+$('#toggle').onclick=async()=>{await api(S.running?'/api/stop':'/api/start',{method:'POST'});refresh()};
+$('#reset').onclick=async()=>{if(confirm('¿Borrar historial y reiniciar saldo simulado?')){try{await api('/api/reset-paper',{method:'POST'});refresh()}catch(e){alert(e.message)}}};
+$('#save').onclick=async()=>{const d={};document.querySelectorAll('#settings input').forEach(i=>{d[i.name]=i.type==='checkbox'?i.checked:i.value});
+  try{await api('/api/settings',{method:'POST',body:JSON.stringify(d)});$('#saveMsg').textContent='Guardado ✓'}catch(e){$('#saveMsg').textContent=e.message}
+  setTimeout(()=>$('#saveMsg').textContent='',3000)};
+const LBL={position_size_sol:'Tamaño por operación (SOL)',max_open_positions:'Máx. posiciones abiertas',max_daily_loss_sol:'Pérdida diaria máx. (SOL)',slippage_bps:'Slippage (bps)',
+min_liquidity_usd:'Liquidez mín. (USD)',min_age_minutes:'Edad mín. (min)',max_age_minutes:'Edad máx. (min)',min_volume_h1_usd:'Volumen 1h mín. (USD)',min_txns_h1:'Txns 1h mín.',
+min_buy_sell_ratio_m5:'Ratio compras/ventas 5m mín.',min_price_change_m5:'Cambio 5m mín. (%)',max_price_change_h1:'Cambio 1h máx. (%)',max_top10_holders_pct:'Top10 holders máx. (%)',
+max_single_holder_pct:'Holder único máx. (%)',max_rugcheck_score:'Score RugCheck máx.',min_mcap_usd:'Mcap mín. (USD)',max_mcap_usd:'Mcap máx. (USD)',stop_loss_pct:'Stop-loss (%)',
+take_profit_1_pct:'Take-profit 1 (%)',tp1_sell_frac:'Fracción a vender en TP1 (0-1)',take_profit_2_pct:'Take-profit 2 (%)',trailing_stop_pct:'Trailing stop (%)',
+max_hold_minutes:'Tiempo máx. posición (min)',min_liquidity_exit_usd:'Salir si liquidez < (USD)',scan_interval_s:'Intervalo de escaneo (s)',monitor_interval_s:'Intervalo de monitor (s)',
+require_no_mint_authority:'Exigir sin mint authority',require_no_freeze_authority:'Exigir sin freeze authority'};
+function renderSettings(s){$('#settings').innerHTML=Object.keys(s).map(k=>typeof s[k]==='boolean'
+ ?`<label><input type="checkbox" name="${k}" ${s[k]?'checked':''} style="width:auto"> ${esc(LBL[k]||k)}</label>`
+ :`<label>${esc(LBL[k]||k)}<input name="${esc(k)}" value="${esc(s[k])}"></label>`).join('')}
+function table(cols,rows){if(!rows.length)return '<p class="note">Nada todavía.</p>';
+ return '<table><tr>'+cols.map(c=>`<th>${c[0]}</th>`).join('')+'</tr>'+rows.map(r=>'<tr>'+cols.map(c=>`<td>${c[1](r)}</td>`).join('')+'</tr>').join('')+'</table>'}
+async function refresh(){let s;try{s=await api('/api/state')}catch(e){return}S=s;
+ $('#modeB').textContent=s.mode==='live'?'DINERO REAL':'SIMULACIÓN';$('#modeB').className='badge '+(s.mode==='live'?'live':'paper');
+ $('#runB').textContent=s.running?'ACTIVO':'DETENIDO';$('#runB').className='badge '+(s.running?'on':'off');
+ $('#toggle').textContent=s.running?'Detener bot':'Iniciar bot';$('#toggle').className=s.running?'red':'';
+ $('#halt').hidden=!s.halted_reason;$('#halt').textContent='Bot detenido: '+s.halted_reason;
+ const k=(a,b,c='')=>`<div class="card"><div class="k">${a}</div><div class="v ${c}">${b}</div></div>`;
+ $('#kpis').innerHTML=k('Saldo (SOL)',f(s.balance_sol))+k('PnL de hoy (SOL)',f(s.daily_pnl_sol),cls(s.daily_pnl_sol))+k('PnL total (SOL)',f(s.total_pnl_sol),cls(s.total_pnl_sol))
+  +k('Operaciones cerradas',s.trades_closed)+k('Acierto',s.win_rate==null?'–':f(s.win_rate,0)+'%')+k('Escaneados / rechazados',s.stats.scanned+' / '+s.stats.rejected)
+  +k('Último escaneo',s.last_scan?ago(s.last_scan):'–');
+ $('#open').innerHTML=table([['Token',r=>esc(r.symbol)],['Entrada $',r=>px(r.entry_price)],['Actual $',r=>px(r.last_price)],['PnL',r=>`<span class="${cls(r.pnl_pct)}">${f(r.pnl_pct,1)}%</span>`],
+  ['Valor SOL',r=>f(r.value_sol)],['Edad',r=>ago(r.opened_at)],['',r=>`<button class="sm red" onclick="closeP(${r.id})">Cerrar</button>`]],s.open);
+ $('#closed').innerHTML=table([['Token',r=>esc(r.symbol)],['Abierta',r=>new Date(r.opened_at*1000).toLocaleString()],['Invertido SOL',r=>f(r.entry_sol)],['PnL SOL',r=>`<span class="${cls(r.pnl_sol)}">${f(r.pnl_sol)}</span>`],
+  ['PnL %',r=>`<span class="${cls(r.pnl_sol)}">${f(r.pnl_sol/r.entry_sol*100,1)}%</span>`],['Motivo',r=>esc(r.exit_reason)],['Modo',r=>esc(r.mode)]],s.closed);
+ $('#log').innerHTML=s.log.map(l=>`<div class="${esc(l.level)}">${new Date(l.ts*1000).toLocaleTimeString()} ${esc(l.msg)}</div>`).join('')||'<p class="note">Sin actividad.</p>';
+ $('#rej').innerHTML=table([['Token',r=>esc(r.mint.slice(0,6))+'…'],['Motivo',r=>esc(r.verdict)],['Hace',r=>ago(r.ts)]],s.recent_rejections);
+ if(!settingsLoaded){renderSettings(s.settings);settingsLoaded=true}}
+window.closeP=async id=>{if(confirm('¿Cerrar posición al precio actual?')){try{await api('/api/close/'+id,{method:'POST'});refresh()}catch(e){alert(e.message)}}};
+function start(){$('#app').hidden=false;refresh();clearInterval(timer);timer=setInterval(refresh,4000)}
+api('/api/state').then(()=>start()).catch(()=>showLogin());
+</script>
+</body>
+</html>
