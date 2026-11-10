@@ -75,24 +75,55 @@ class Engine:
         if len(open_pos) >= s.max_open_positions:
             return
         held = {p["mint"] for p in open_pos}
-        mints = [m for m in await sources.discover_candidates()
-                 if m not in held and not db.q("SELECT 1 FROM seen WHERE mint=? AND ts>?", (m, time.time() - 1800))]
+        now = time.time()
+        found = [m for m in await sources.discover_candidates() if m not in held]
+        self.stats["candidates"] = len(found)
+        seen = {r["mint"]: (r["ts"], r["verdict"]) for r in db.q("SELECT mint,ts,verdict FROM seen")}
+        mints = [m for m in found if m not in seen or now - seen[m][0] > self._cooldown(seen[m][1])]
         if not mints:
             return
         pairs = await sources.get_pairs(mints)
-        for mint in mints:
-            if len(self.open_positions()) >= s.max_open_positions:
-                break
-            self.stats["scanned"] += 1
+        sem = asyncio.Semaphore(6)
+
+        async def vet(mint: str):
             pair = pairs.get(mint)
             ok, why = (False, "sin par") if not pair else strategy.check_entry(pair, s)
-            if ok:
-                ok, why = strategy.check_rugcheck(await sources.rugcheck(mint), s)
+            if ok:                                    # RugCheck solo si pasa el filtro de mercado (con caché)
+                async with sem:
+                    ok, why = strategy.check_rugcheck(await self._rugcheck(mint), s)
+            return mint, pair, ok, why
+
+        for mint, pair, ok, why in await asyncio.gather(*(vet(m) for m in mints)):
+            self.stats["scanned"] += 1
             self._mark_seen(mint, "ok" if ok else why)
             if not ok:
                 self.stats["rejected"] += 1
                 continue
+            if len(self.open_positions()) >= s.max_open_positions or mint in {p["mint"] for p in self.open_positions()}:
+                continue
             await self._open(mint, pair, s)
+
+    @staticmethod
+    def _cooldown(verdict: str) -> float:
+        """Segundos antes de volver a evaluar un token según por qué se rechazó."""
+        if verdict == "ok":
+            return 600
+        if verdict.startswith(("mint authority", "freeze authority", "riesgo", "holder", "top10", "score")):
+            return 1800     # problema estructural: no cambia
+        if verdict.startswith(("liquidez 0", "sin par", "sin informe")):
+            return 120
+        return 25           # mercado (momentum, ratio, volumen...): cambia rápido
+
+    _rug_cache: dict[str, tuple[float, dict | None]] = {}
+
+    async def _rugcheck(self, mint: str):
+        hit = self._rug_cache.get(mint)
+        if hit and time.time() - hit[0] < 900:
+            return hit[1]
+        rep = await sources.rugcheck(mint)
+        if rep:
+            self._rug_cache[mint] = (time.time(), rep)
+        return rep
 
     @staticmethod
     def _mark_seen(mint: str, verdict: str) -> None:

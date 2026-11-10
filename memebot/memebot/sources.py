@@ -29,26 +29,38 @@ async def _get(url: str):
     return None
 
 
+GECKO = "https://api.geckoterminal.com/api/v2/networks/solana"
+# Fuentes de GeckoTerminal; se consultan por turnos (límite gratuito ~30 peticiones/min)
+GECKO_SOURCES = [
+    "trending_pools?duration=5m", "trending_pools?duration=1h", "new_pools?page=1", "pools?sort=h24_volume_usd_desc&page=1",
+    "trending_pools?duration=6h", "new_pools?page=2", "trending_pools?duration=24h", "new_pools?page=3",
+    "pools?sort=h24_volume_usd_desc&page=2", "new_pools?page=4",
+]
+DEX_SOURCES = [
+    "/token-profiles/latest/v1", "/token-boosts/latest/v1", "/token-boosts/top/v1",
+    "/community-takeovers/latest/v1", "/ads/latest/v1",
+]
+_gecko_i = 0
+
+
 async def discover_candidates() -> list[str]:
-    """Mints de Solana recién listados / con perfil / impulsados en DexScreener."""
-    urls = [
-        f"{DEX}/token-profiles/latest/v1",
-        f"{DEX}/token-boosts/latest/v1",
-        f"{DEX}/token-boosts/top/v1",
-    ]
-    results = await asyncio.gather(*(_get(u) for u in urls), _gecko("trending_pools"), _gecko("new_pools"))
+    """Mints de Solana desde ~15 fuentes: DexScreener (5 listas) + GeckoTerminal (2 por ciclo, rotando)."""
+    global _gecko_i
+    picks = [GECKO_SOURCES[(_gecko_i + k) % len(GECKO_SOURCES)] for k in range(2)]
+    _gecko_i = (_gecko_i + 2) % len(GECKO_SOURCES)
+    results = await asyncio.gather(*(_get(DEX + u) for u in DEX_SOURCES), *(_gecko(k) for k in picks))
     mints: list[str] = []
-    for res in results[:3]:
+    for res in results[len(DEX_SOURCES):]:
+        mints += res                      # GeckoTerminal primero (trending / nuevos)
+    for res in results[: len(DEX_SOURCES)]:
         for it in res or []:
             if it.get("chainId") == "solana" and it.get("tokenAddress"):
                 mints.append(it["tokenAddress"])
-    mints = results[3] + results[4] + mints   # pools en tendencia / nuevos primero
     return list(dict.fromkeys(mints))
 
 
-async def _gecko(kind: str) -> list[str]:
-    """Mints de pools en tendencia / nuevos de Solana (GeckoTerminal, sin API key)."""
-    data = await _get(f"https://api.geckoterminal.com/api/v2/networks/solana/{kind}?page=1")
+async def _gecko(path: str) -> list[str]:
+    data = await _get(f"{GECKO}/{path}")
     out = []
     for x in (data or {}).get("data", []):
         try:

@@ -8,6 +8,13 @@ stop-loss, trailing stop y salida por caída de liquidez. Todo se controla desde
 (5 SOL) y aplica un coste simulado del 2 % por operación. Aun así, los fills reales de memecoins suelen ser
 peores que los simulados (latencia, MEV, slippage), así que un buen resultado en paper no garantiza nada.
 
+## Velocidad y actividad
+
+- **Radar:** ~15 fuentes (DexScreener: perfiles, boosts, takeovers, ads; GeckoTerminal: trending 5m/1h/6h/24h, pools nuevos y top volumen, por turnos) → ~80-100 tokens a la vez.
+- **Escaneo cada 8 s, monitor de posiciones cada 2 s**, gráficos del panel cada 1 s. Los tokens rechazados por mercado se reevalúan a los 25 s; los rechazados por seguridad (RugCheck) no se reintentan hasta 30 min.
+- Hasta 12 posiciones simultáneas por defecto. Perfiles en Ajustes: Conservador, Equilibrado, Activo (por defecto) e Hiperactivo.
+- El precio viene de DexScreener, que se refresca cada pocos segundos: ir más rápido que eso no da datos más frescos.
+
 ## Arranque rápido (simulación, hoy)
 
 **Windows:** haz doble clic en `Iniciar_MemeBot.bat` (necesita Python instalado). Lo demás es para Mac/Linux:

@@ -266,10 +266,7 @@ async function updateCard(p){
   if(!c.dex){
     c.series.applyOptions({lineColor:col,topColor:up?'rgba(52,211,153,.28)':'rgba(251,113,133,.25)',bottomColor:'rgba(0,0,0,0)'});
     setLines(c,p);
-    try{const r=await api('/api/ticks/'+p.id+'?since='+c.last);
-      if(r.ticks.length){ if(!c.last){c.data=r.ticks;c.series.setData(c.data);c.chart.timeScale().fitContent()}
-        else r.ticks.forEach(t=>{c.data.push(t);c.series.update(t)}); c.last=c.data[c.data.length-1].time}
-      c.series.setMarkers(tradeMarkers(c.data,r.trades))}catch(e){}}
+  }
   // gauge SL → TP2
   const lo=p.sl_price,hi=p.tp2_price,pos=v=>Math.max(0,Math.min(100,(v-lo)/(hi-lo)*100));
   const g=c.root.querySelector('.gauge');
@@ -277,6 +274,15 @@ async function updateCard(p){
   g.querySelector('.m').style.left=pos(p.last_price)+'%';
   const sold=p.tp1_done?'<span><b>½ vendida</b></span>':'';
   c.root.querySelector('.facts').innerHTML=`<span>Entrada <b>$${fp(p.entry_price)}</b></span><span>Máx. <b>$${fp(p.peak_price)}</b></span><span>Invertido <b>${f(p.entry_sol,3)} SOL</b></span><span>Hace <b>${ago(p.opened_at)}</b></span>${sold}`}
+let pulling=false;
+async function pullTicks(){
+  if(pulling)return;const since={};Object.values(cards).forEach(c=>since[c.id]=c.last||0);
+  if(!Object.keys(since).length)return;pulling=true;
+  try{const r=await api('/api/live',{method:'POST',body:JSON.stringify({since})});
+    for(const id in r){const c=cards[id],x=r[id];if(!c||c.dex)continue;
+      if(x.ticks.length){if(!c.last){c.data=x.ticks;c.series.setData(c.data);c.chart.timeScale().fitContent()}
+        else x.ticks.forEach(t=>{c.data.push(t);c.series.update(t)});c.last=c.data[c.data.length-1].time}
+      if(c.data.length)c.series.setMarkers(tradeMarkers(c.data,x.trades))}}catch(e){}finally{pulling=false}}
 function reconcile(open){
   const ids=new Set(open.map(p=>p.id));
   Object.keys(cards).forEach(id=>{if(!ids.has(+id)){cards[id].chart.remove();cards[id].root.remove();delete cards[id]}});
@@ -291,7 +297,7 @@ function renderKpis(s){
     ['tpnl','Beneficio total',s.total_pnl_sol,v=>(v>0?'+':'')+f(v,4),'SOL · '+s.trades_closed+' ops',cls(s.total_pnl_sol)],
     ['wr','Acierto',s.win_rate??0,v=>s.win_rate==null?'–':f(v,0)+'%',s.best!=null?'mejor +'+f(s.best,3)+' · peor '+f(s.worst,3):'sin datos',''],
     ['opn','Posiciones',s.open.length,v=>Math.round(v)+' / '+s.settings.max_open_positions,'abiertas',''],
-    ['scn','Tokens analizados',s.stats.scanned,v=>Math.round(v),s.stats.rejected+' rechazados · '+s.stats.bought+' compras','']];
+    ['scn','Tokens analizados',s.stats.scanned,v=>Math.round(v),s.stats.rejected+' rechazados · '+s.stats.bought+' compras · '+(s.stats.candidates||0)+' en radar','']];
   if(!$('#kpis').children.length)$('#kpis').innerHTML=defs.map(d=>`<div class="glass kpi"><div class="k">${d[1]}</div><div class="v" id="k-${d[0]}"></div><small id="s-${d[0]}"></small></div>`).join('');
   defs.forEach(d=>{const el=$('#k-'+d[0]);el.className='v '+d[5];countTo(el,d[2],d[3]);$('#s-'+d[0]).textContent=d[4]})}
 
@@ -344,9 +350,10 @@ const GROUPS=[['Capital y riesgo',['position_size_sol','max_open_positions','max
  ['Seguridad (RugCheck)',['max_top10_holders_pct','max_single_holder_pct','max_rugcheck_score','require_no_mint_authority','require_no_freeze_authority']],
  ['Salidas',['stop_loss_pct','take_profit_1_pct','tp1_sell_frac','take_profit_2_pct','trailing_stop_pct','max_hold_minutes','min_liquidity_exit_usd']],
  ['Sistema',['scan_interval_s','monitor_interval_s']]];
-const PRESETS={Conservador:{position_size_sol:0.02,max_open_positions:3,stop_loss_pct:15,take_profit_1_pct:35,take_profit_2_pct:120,trailing_stop_pct:12,min_liquidity_usd:30000,min_volume_h1_usd:25000,max_top10_holders_pct:25,max_single_holder_pct:10,max_daily_loss_sol:0.1},
- Equilibrado:{position_size_sol:0.05,max_open_positions:5,stop_loss_pct:25,take_profit_1_pct:60,take_profit_2_pct:200,trailing_stop_pct:20,min_liquidity_usd:15000,min_volume_h1_usd:10000,max_top10_holders_pct:35,max_single_holder_pct:15,max_daily_loss_sol:0.3},
- Agresivo:{position_size_sol:0.1,max_open_positions:8,stop_loss_pct:35,take_profit_1_pct:100,take_profit_2_pct:400,trailing_stop_pct:30,min_liquidity_usd:8000,min_volume_h1_usd:5000,max_top10_holders_pct:45,max_single_holder_pct:20,max_daily_loss_sol:0.6}};
+const PRESETS={Conservador:{position_size_sol:0.02,max_open_positions:4,stop_loss_pct:15,take_profit_1_pct:35,take_profit_2_pct:120,trailing_stop_pct:12,min_liquidity_usd:30000,min_volume_h1_usd:25000,min_txns_h1:100,max_top10_holders_pct:25,max_single_holder_pct:10,max_daily_loss_sol:0.15},
+ Equilibrado:{position_size_sol:0.05,max_open_positions:8,stop_loss_pct:25,take_profit_1_pct:60,take_profit_2_pct:200,trailing_stop_pct:20,min_liquidity_usd:15000,min_volume_h1_usd:10000,min_txns_h1:80,max_top10_holders_pct:35,max_single_holder_pct:15,max_daily_loss_sol:0.4},
+ Activo:{position_size_sol:0.05,max_open_positions:12,stop_loss_pct:25,take_profit_1_pct:60,take_profit_2_pct:200,trailing_stop_pct:20,min_liquidity_usd:8000,min_volume_h1_usd:4000,min_txns_h1:40,max_top10_holders_pct:35,max_single_holder_pct:15,max_daily_loss_sol:0.6},
+ Hiperactivo:{position_size_sol:0.05,max_open_positions:20,stop_loss_pct:20,take_profit_1_pct:35,take_profit_2_pct:120,trailing_stop_pct:15,min_liquidity_usd:5000,min_volume_h1_usd:2000,min_txns_h1:25,min_mcap_usd:8000,min_buy_sell_ratio_m5:1.0,max_top10_holders_pct:45,max_single_holder_pct:20,max_daily_loss_sol:1.0,scan_interval_s:6,monitor_interval_s:2}};
 function renderSettings(s){
   $('#t-set').innerHTML=`<div class="presets"><span class="note">Perfiles:</span>${Object.keys(PRESETS).map(k=>`<button class="ghost sm" data-p="${k}">${k}</button>`).join('')}<span class="note">Rellenan los campos; pulsa Guardar para aplicar.</span></div>`
    +GROUPS.map(g=>`<div class="sgroup"><h3>${g[0]}</h3><div class="sg">`+g[1].map(k=>typeof s[k]==='boolean'
@@ -380,14 +387,14 @@ async function refresh(){
   $('#halt').hidden=!s.halted_reason;$('#halt').textContent='⚠ Bot detenido: '+s.halted_reason;
   renderKpis(s);renderEquity(s.equity);renderTables(s);renderLog(s.log);
   $('#nOpen').textContent=s.open.length;$('#noPos').hidden=s.open.length>0;
-  $('#scanTxt').textContent=s.running?(s.stats.scanned+' tokens analizados · '+s.stats.rejected+' descartados por los filtros'):'El bot está detenido: pulsa «Iniciar bot».';
+  $('#scanTxt').textContent=s.running?(s.stats.scanned+' tokens analizados · '+(s.stats.candidates||0)+' en el radar ahora · '+s.stats.rejected+' descartados por los filtros'):'El bot está detenido: pulsa «Iniciar bot».';
   if(!setDone){renderSettings(s.settings);setDone=true}
-  await reconcile(s.open);first=false}
+  await reconcile(s.open);await pullTicks();first=false}
 $('#toggle').onclick=async()=>{await api(S.running?'/api/stop':'/api/start',{method:'POST'});refresh()};
 $('#logout').onclick=async()=>{await api('/api/logout',{method:'POST'});location.reload()};
 $('#loginBtn').onclick=async()=>{try{await api('/api/login',{method:'POST',body:JSON.stringify({password:$('#pw').value})});location.reload()}catch(e){$('#loginErr').textContent=e.message}};
 $('#pw').onkeydown=e=>{if(e.key==='Enter')$('#loginBtn').click()};
-function begin(){$('#login').hidden=true;$('#app').hidden=false;refresh();timer=setInterval(refresh,3000)}
+function begin(){$('#login').hidden=true;$('#app').hidden=false;refresh();timer=setInterval(refresh,2000);setInterval(pullTicks,1000)}
 api('/api/state').then(begin).catch(()=>{});
 </script>
 </body>

@@ -44,16 +44,16 @@ class Settings:
 
     # tamaño y riesgo
     position_size_sol: float = _f("POSITION_SIZE_SOL", 0.05)
-    max_open_positions: int = int(_f("MAX_OPEN_POSITIONS", 5))
-    max_daily_loss_sol: float = _f("MAX_DAILY_LOSS_SOL", 0.3)
+    max_open_positions: int = int(_f("MAX_OPEN_POSITIONS", 12))
+    max_daily_loss_sol: float = _f("MAX_DAILY_LOSS_SOL", 0.6)
     slippage_bps: int = 300
     # filtros de entrada
-    min_liquidity_usd: float = 15000
-    min_age_minutes: float = 10
+    min_liquidity_usd: float = 8000
+    min_age_minutes: float = 5
     max_age_minutes: float = 2880
-    min_volume_h1_usd: float = 10000
-    min_txns_h1: int = 80
-    min_buy_sell_ratio_m5: float = 1.1
+    min_volume_h1_usd: float = 4000
+    min_txns_h1: int = 40
+    min_buy_sell_ratio_m5: float = 1.05
     min_price_change_m5: float = 0.0      # %
     max_price_change_h1: float = 400.0    # % (evita comprar tras pumps enormes)
     max_top10_holders_pct: float = 35.0
@@ -61,7 +61,7 @@ class Settings:
     max_rugcheck_score: int = 2000        # RugCheck: más bajo = más seguro
     require_no_mint_authority: bool = True
     require_no_freeze_authority: bool = True
-    min_mcap_usd: float = 30000
+    min_mcap_usd: float = 15000
     max_mcap_usd: float = 5_000_000
     # salidas
     stop_loss_pct: float = 25.0
@@ -72,8 +72,8 @@ class Settings:
     max_hold_minutes: float = 240
     min_liquidity_exit_usd: float = 3000  # si la liquidez cae por debajo: salir ya
     # bucle
-    scan_interval_s: int = 20
-    monitor_interval_s: int = 5
+    scan_interval_s: int = 8
+    monitor_interval_s: int = 2
 
     def to_dict(self) -> dict:
         return asdict(self)

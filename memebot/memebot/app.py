@@ -120,6 +120,19 @@ def ticks(pid: int, since: int = 0):
     return {"ticks": [{"time": r["ts"], "value": r["price"]} for r in rows], "trades": tr}
 
 
+@app.post("/api/live", dependencies=[Depends(auth)])
+async def live(request: Request):
+    """Ticks nuevos + operaciones de varias posiciones en una sola petición: {"since": {id: ts}}."""
+    since = (await request.json()).get("since", {})
+    out = {}
+    for pid, ts in list(since.items())[:50]:
+        pid = int(pid)
+        rows = db.q("SELECT ts,price FROM ticks WHERE position_id=? AND ts>? ORDER BY ts LIMIT 5000", (pid, int(ts)))
+        tr = [dict(r) for r in db.q("SELECT ts,side,price,reason FROM trades WHERE position_id=? ORDER BY ts", (pid,))]
+        out[pid] = {"ticks": [{"time": r["ts"], "value": r["price"]} for r in rows], "trades": tr}
+    return out
+
+
 @app.post("/api/start", dependencies=[Depends(auth)])
 async def start():
     assert engine
