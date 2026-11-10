@@ -35,6 +35,10 @@ CREATE TABLE IF NOT EXISTS trades (
   mint TEXT, symbol TEXT, price REAL, tokens REAL, sol REAL,
   reason TEXT, tx TEXT, mode TEXT
 );
+CREATE TABLE IF NOT EXISTS ticks (
+  position_id INTEGER NOT NULL, ts INTEGER NOT NULL, price REAL NOT NULL,
+  PRIMARY KEY (position_id, ts)
+);
 CREATE TABLE IF NOT EXISTS seen (mint TEXT PRIMARY KEY, ts REAL, verdict TEXT);
 CREATE TABLE IF NOT EXISTS log (id INTEGER PRIMARY KEY AUTOINCREMENT, ts REAL, level TEXT, msg TEXT);
 """
@@ -47,8 +51,21 @@ def conn() -> sqlite3.Connection:
             _conn = sqlite3.connect(DB_PATH, check_same_thread=False)
             _conn.row_factory = sqlite3.Row
             _conn.executescript(SCHEMA)
+            _migrate(_conn)
             _conn.commit()
         return _conn
+
+
+def _migrate(c: sqlite3.Connection) -> None:
+    cols = {r[1] for r in c.execute("PRAGMA table_info(positions)")}
+    if "image" not in cols:
+        c.execute("ALTER TABLE positions ADD COLUMN image TEXT")
+
+
+def add_tick(position_id: int, price: float, ts: float | None = None) -> None:
+    with tx() as c:
+        c.execute("INSERT OR REPLACE INTO ticks(position_id,ts,price) VALUES(?,?,?)",
+                  (position_id, int(ts or time.time()), price))
 
 
 def reset_for_tests(path: str = ":memory:") -> None:
@@ -57,6 +74,7 @@ def reset_for_tests(path: str = ":memory:") -> None:
         _conn = sqlite3.connect(path, check_same_thread=False)
         _conn.row_factory = sqlite3.Row
         _conn.executescript(SCHEMA)
+        _migrate(_conn)
         _conn.commit()
 
 

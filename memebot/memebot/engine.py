@@ -17,6 +17,7 @@ class Engine:
         self._tasks: list[asyncio.Task] = []
         self.last_scan = 0.0
         self.stats = {"scanned": 0, "rejected": 0, "bought": 0}
+        self._pending: dict[int, str] = {}   # salidas pendientes de confirmar (id -> motivo)
 
     # ---------- control ----------
     def start(self) -> None:
@@ -64,6 +65,8 @@ class Engine:
     async def scan_once(self) -> None:
         s = db.load_settings()
         self.last_scan = time.time()
+        with db.tx() as c:   # limpieza: ticks de más de 3 días
+            c.execute("DELETE FROM ticks WHERE ts < ?", (int(time.time()) - 3 * 86400,))
         if self.daily_pnl() <= -s.max_daily_loss_sol:
             if self.running:
                 self.stop("límite de pérdida diaria alcanzado")
@@ -107,9 +110,11 @@ class Engine:
         with db.tx() as c:
             cur = c.execute(
                 """INSERT INTO positions(mint,symbol,pair,mode,opened_at,entry_price,entry_sol,tokens,
-                   tokens_initial,peak_price,last_price) VALUES(?,?,?,?,?,?,?,?,?,?,?)""",
+                   tokens_initial,peak_price,last_price,image) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (mint, sym, pair.get("pairAddress"), self.executor.mode, now, price, fill.sol,
-                 fill.tokens, fill.tokens, price, price))
+                 fill.tokens, fill.tokens, price, price, (pair.get("info") or {}).get("imageUrl")))
+            c.execute("INSERT OR REPLACE INTO ticks(position_id,ts,price) VALUES(?,?,?)",
+                      (cur.lastrowid, int(now), price))
             c.execute("INSERT INTO trades(position_id,ts,side,mint,symbol,price,tokens,sol,reason,tx,mode) "
                       "VALUES(?,?,?,?,?,?,?,?,?,?,?)",
                       (cur.lastrowid, now, "buy", mint, sym, price, fill.tokens, fill.sol, "entrada",
@@ -133,7 +138,8 @@ class Engine:
         positions = self.open_positions()
         if not positions:
             return
-        pairs = await sources.get_pairs([p["mint"] for p in positions])
+        pairs = await sources.get_pairs([p["mint"] for p in positions],
+                                        {p["mint"]: p["pair"] for p in positions})
         now = time.time()
         for pos in positions:
             pair = pairs.get(pos["mint"])
@@ -147,9 +153,18 @@ class Engine:
             with db.tx() as c:
                 c.execute("UPDATE positions SET last_price=?, peak_price=? WHERE id=?",
                           (price, pos["peak_price"], pos["id"]))
+                c.execute("INSERT OR REPLACE INTO ticks(position_id,ts,price) VALUES(?,?,?)",
+                          (pos["id"], int(now), price))
             decision = strategy.check_exit(pos, price, liq, now, s)
-            if decision:
-                await self._sell(pos, price, *decision, s)
+            if not decision:
+                self._pending.pop(pos["id"], None)
+                continue
+            # confirmación: exige 2 lecturas seguidas con el mismo motivo (filtra ticks falsos del feed)
+            if decision[0] != "tiempo_maximo" and self._pending.get(pos["id"]) != decision[0]:
+                self._pending[pos["id"]] = decision[0]
+                continue
+            self._pending.pop(pos["id"], None)
+            await self._sell(pos, price, *decision, s)
 
     async def _sell(self, pos: dict, price: float, reason: str, frac: float, s) -> None:
         tokens = pos["tokens"] * frac

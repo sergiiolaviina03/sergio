@@ -44,3 +44,25 @@ def test_daily_loss_halts(monkeypatch):
     e.running = True
     asyncio.run(e.scan_once())
     assert not e.running and "pérdida" in e.halted_reason
+
+
+def test_exit_needs_two_confirming_reads(monkeypatch):
+    async def sp(): return 100.0
+    monkeypatch.setattr(sources, "sol_price_usd", sp)
+    prices = iter([0.01, 0.005, 0.01, 0.005, 0.005])  # tick falso, recupera, caída real x2
+
+    async def fake_pairs(mints, prefer=None):
+        return {mints[0]: {"priceUsd": str(next(prices)), "liquidity": {"usd": 50000}}}
+    monkeypatch.setattr(sources, "get_pairs", fake_pairs)
+    e = eng.Engine(); s = Settings()
+    async def run():
+        await e._open("M", {"priceUsd": "0.01", "pairAddress": "P", "baseToken": {"symbol": "T"}}, s)
+        await e.monitor_once()            # 0.01 -> nada
+        await e.monitor_once()            # 0.005 (-50%) -> pendiente
+        assert len(e.open_positions()) == 1
+        await e.monitor_once()            # vuelve 0.01 -> cancela pendiente
+        await e.monitor_once()            # 0.005 -> pendiente de nuevo
+        assert len(e.open_positions()) == 1
+        await e.monitor_once()            # 0.005 confirmado -> vende
+    asyncio.run(run())
+    assert e.open_positions() == []

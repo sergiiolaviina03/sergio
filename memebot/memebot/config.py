@@ -73,7 +73,7 @@ class Settings:
     min_liquidity_exit_usd: float = 3000  # si la liquidez cae por debajo: salir ya
     # bucle
     scan_interval_s: int = 20
-    monitor_interval_s: int = 8
+    monitor_interval_s: int = 5
 
     def to_dict(self) -> dict:
         return asdict(self)

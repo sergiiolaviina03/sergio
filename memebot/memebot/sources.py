@@ -66,8 +66,9 @@ def best_pair(pairs: list[dict]) -> dict | None:
     return max(sol, key=lambda p: (p.get("liquidity") or {}).get("usd") or 0)
 
 
-async def get_pairs(mints: list[str]) -> dict[str, dict]:
-    """Mejor par por mint (hasta 30 mints por petición)."""
+async def get_pairs(mints: list[str], prefer: dict[str, str] | None = None) -> dict[str, dict]:
+    """Mejor par por mint (hasta 30 mints por petición). Con `prefer` {mint: pairAddress}
+    se usa ese pool concreto si existe, para que el precio no salte entre pools."""
     out: dict[str, dict] = {}
     for i in range(0, len(mints), 30):
         chunk = mints[i : i + 30]
@@ -76,7 +77,7 @@ async def get_pairs(mints: list[str]) -> dict[str, dict]:
         for p in data or []:
             grouped.setdefault((p.get("baseToken") or {}).get("address", ""), []).append(p)
         for m, ps in grouped.items():
-            bp = best_pair(ps)
+            bp = next((p for p in ps if prefer and p.get("pairAddress") == prefer.get(m)), None) or best_pair(ps)
             if bp:
                 out[m] = bp
     return out
@@ -91,7 +92,20 @@ def pair_age_minutes(pair: dict) -> float | None:
     return (time.time() * 1000 - ts) / 60000 if ts else None
 
 
+_sol_cache: tuple[float, float] = (0.0, 0.0)
+
+
 async def sol_price_usd() -> float:
+    global _sol_cache
+    if time.time() - _sol_cache[0] < 20 and _sol_cache[1] > 0:
+        return _sol_cache[1]
+    v = await _sol_price_uncached()
+    if v > 0:
+        _sol_cache = (time.time(), v)
+    return v or _sol_cache[1]
+
+
+async def _sol_price_uncached() -> float:
     data = await _get(f"{DEX}/tokens/v1/solana/So11111111111111111111111111111111111111112")
     bp = best_pair(data or [])
     try:

@@ -12,7 +12,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from itsdangerous import BadSignature, TimestampSigner
 from pydantic import BaseModel
 
-from . import db
+from . import db, sources
 from .config import Settings, env
 from .engine import Engine
 
@@ -83,10 +83,22 @@ async def state():
     all_closed = db.q("SELECT pnl_sol FROM positions WHERE status='closed'")
     wins = sum(1 for r in all_closed if r["pnl_sol"] > 0)
     for p in open_pos:
+        e = p["entry_price"]
+        p["sl_price"] = e * (1 - s.stop_loss_pct / 100)
+        p["tp1_price"] = e * (1 + s.take_profit_1_pct / 100)
+        p["tp2_price"] = e * (1 + s.take_profit_2_pct / 100)
+        p["trail_price"] = p["peak_price"] * (1 - s.trailing_stop_pct / 100) if p["tp1_done"] else None
         lp = p["last_price"] or p["entry_price"]
         p["value_sol"] = p["realized_sol"] + (p["entry_sol"] * (p["tokens"] / p["tokens_initial"]) * (lp / p["entry_price"]))
         p["pnl_pct"] = (lp / p["entry_price"] - 1) * 100
+    equity, acc = [], 0.0
+    for r in reversed(closed):
+        acc += r["pnl_sol"]
+        equity.append({"time": int(r["closed_at"]), "value": round(acc, 6)})
+    best = max((r["pnl_sol"] for r in all_closed), default=None)
+    worst = min((r["pnl_sol"] for r in all_closed), default=None)
     return {
+        "sol_price": await sources.sol_price_usd(), "equity": equity, "best": best, "worst": worst,
         "mode": ex.mode, "live_possible": env.live_enabled,
         "running": engine.running, "halted_reason": engine.halted_reason,
         "balance_sol": bal, "daily_pnl_sol": engine.daily_pnl(),
@@ -98,6 +110,14 @@ async def state():
         "recent_rejections": [dict(r) for r in db.q(
             "SELECT mint,verdict,ts FROM seen WHERE verdict!='ok' ORDER BY ts DESC LIMIT 15")],
     }
+
+
+@app.get("/api/ticks/{pid}", dependencies=[Depends(auth)])
+def ticks(pid: int, since: int = 0):
+    rows = db.q("SELECT ts,price FROM ticks WHERE position_id=? AND ts>? ORDER BY ts LIMIT 5000", (pid, since))
+    tr = [dict(r) for r in db.q(
+        "SELECT ts,side,price,reason FROM trades WHERE position_id=? ORDER BY ts", (pid,))]
+    return {"ticks": [{"time": r["ts"], "value": r["price"]} for r in rows], "trades": tr}
 
 
 @app.post("/api/start", dependencies=[Depends(auth)])
@@ -147,6 +167,11 @@ async def reset_paper():
         c.execute("DELETE FROM positions"); c.execute("DELETE FROM trades"); c.execute("DELETE FROM seen")
     db.kv_set("paper_balance", env.paper_start_balance)
     return {"ok": True}
+
+
+@app.get("/lightweight-charts.js")
+def lw():
+    return FileResponse(STATIC / "lightweight-charts.js", media_type="application/javascript")
 
 
 @app.get("/")
