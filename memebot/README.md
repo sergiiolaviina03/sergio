@@ -10,6 +10,8 @@ peores que los simulados (latencia, MEV, slippage), así que un buen resultado e
 
 ## Arranque rápido (simulación, hoy)
 
+**Windows:** haz doble clic en `Iniciar_MemeBot.bat` (necesita Python instalado). Lo demás es para Mac/Linux:
+
 ```bash
 cd memebot
 python3 -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate
