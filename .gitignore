@@ -7,3 +7,4 @@ venv/
 .pytest_cache/
 memebot_log.txt
 .venv/
+*.db-journal
