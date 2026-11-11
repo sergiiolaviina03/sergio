@@ -1,0 +1,11 @@
+{
+  "name": "MemeBot",
+  "image": "mcr.microsoft.com/devcontainers/python:1-3.12",
+  "postCreateCommand": "pip install -r memebot/requirements.txt",
+  "postAttachCommand": "cd memebot && (pgrep -f 'python run.py' >/dev/null || (HOST=0.0.0.0 ALLOW_REMOTE_SETUP=1 nohup python run.py > /tmp/memebot.log 2>&1 &))",
+  "forwardPorts": [8000],
+  "portsAttributes": {
+    "8000": { "label": "MemeBot", "onAutoForward": "openBrowser", "visibility": "private" }
+  },
+  "customizations": { "codespaces": { "openFiles": [] } }
+}

@@ -40,39 +40,52 @@ class Env:
 
 @dataclass
 class Settings:
-    """Ajustes de estrategia. Se guardan en la BD y se editan desde el dashboard."""
+    """Ajustes de estrategia. Se guardan en la BD y se editan desde el dashboard.
+    Los valores por defecto son el perfil «Degen»: más riesgo, más operaciones, salidas cortas."""
 
     # tamaño y riesgo
-    position_size_sol: float = _f("POSITION_SIZE_SOL", 0.05)
-    max_open_positions: int = int(_f("MAX_OPEN_POSITIONS", 12))
-    max_daily_loss_sol: float = _f("MAX_DAILY_LOSS_SOL", 0.6)
-    slippage_bps: int = 300
+    position_size_sol: float = _f("POSITION_SIZE_SOL", 0.05)    # tamaño BASE (convicción baja)
+    size_mult_max: float = 3.0                                  # con convicción máxima entra hasta x veces el base
+    max_open_positions: int = int(_f("MAX_OPEN_POSITIONS", 30))
+    max_exposure_sol: float = _f("MAX_EXPOSURE_SOL", 2.0)       # SOL máximos invertidos a la vez
+    max_daily_loss_sol: float = _f("MAX_DAILY_LOSS_SOL", 1.0)
+    slippage_bps: int = 500
+    # convicción (puntuación 0-100 por señales de mercado + seguridad)
+    min_score: float = 42.0                                     # por debajo no entra
+    # refuerzo: añade a una posición que va bien y sigue con fuerza
+    scale_in_enabled: bool = True
+    scale_in_trigger_pct: float = 7.0
+    scale_in_min_score: float = 65.0
+    scale_in_size_mult: float = 1.5                             # x tamaño base
     # filtros de entrada
-    min_liquidity_usd: float = 8000
-    min_age_minutes: float = 5
-    max_age_minutes: float = 2880
-    min_volume_h1_usd: float = 4000
-    min_txns_h1: int = 40
-    min_buy_sell_ratio_m5: float = 1.05
-    min_price_change_m5: float = 0.0      # %
-    max_price_change_h1: float = 400.0    # % (evita comprar tras pumps enormes)
-    max_top10_holders_pct: float = 35.0
-    max_single_holder_pct: float = 15.0
-    max_rugcheck_score: int = 2000        # RugCheck: más bajo = más seguro
+    min_liquidity_usd: float = 5000
+    min_age_minutes: float = 3
+    max_age_minutes: float = 10080
+    min_volume_h1_usd: float = 2000
+    min_txns_h1: int = 25
+    min_buy_sell_ratio_m5: float = 1.0
+    min_price_change_m5: float = -2.0     # %
+    max_price_change_h1: float = 500.0    # % (evita comprar tras pumps enormes)
+    max_top10_holders_pct: float = 40.0
+    max_single_holder_pct: float = 18.0
+    max_rugcheck_score: int = 2500        # RugCheck: más bajo = más seguro
     require_no_mint_authority: bool = True
     require_no_freeze_authority: bool = True
-    min_mcap_usd: float = 15000
-    max_mcap_usd: float = 5_000_000
-    # salidas
-    stop_loss_pct: float = 25.0
-    take_profit_1_pct: float = 60.0       # vende tp1_sell_frac de la posición
-    tp1_sell_frac: float = 0.5
-    take_profit_2_pct: float = 200.0      # vende el resto
-    trailing_stop_pct: float = 20.0       # se activa tras TP1, desde el máximo
-    max_hold_minutes: float = 240
-    min_liquidity_exit_usd: float = 3000  # si la liquidez cae por debajo: salir ya
+    min_mcap_usd: float = 8000
+    max_mcap_usd: float = 8_000_000
+    # salidas (cortas)
+    stop_loss_pct: float = 18.0
+    take_profit_1_pct: float = 14.0       # vende tp1_sell_frac de la posición
+    tp1_sell_frac: float = 0.6
+    take_profit_2_pct: float = 45.0       # vende el resto
+    trailing_stop_pct: float = 9.0        # se activa tras TP1, desde el máximo
+    max_hold_minutes: float = 25
+    stagnation_minutes: float = 6         # si no se mueve en este tiempo, libera el capital
+    stagnation_band_pct: float = 4.0
+    momentum_fade_ratio: float = 0.7      # compras/ventas 5m por debajo de esto con ganancia -> asegura
+    min_liquidity_exit_usd: float = 2500  # si la liquidez cae por debajo: salir ya
     # bucle
-    scan_interval_s: int = 8
+    scan_interval_s: int = 5
     monitor_interval_s: int = 2
 
     def to_dict(self) -> dict:

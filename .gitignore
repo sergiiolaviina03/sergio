@@ -5,3 +5,5 @@ venv/
 .env
 *.db
 .pytest_cache/
+memebot_log.txt
+.venv/

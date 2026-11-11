@@ -1,0 +1,3 @@
+# Solo para dinero real (MODE=live). La simulación no lo necesita.
+solders>=0.21
+base58>=2.1

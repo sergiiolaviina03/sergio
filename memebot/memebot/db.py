@@ -58,8 +58,9 @@ def conn() -> sqlite3.Connection:
 
 def _migrate(c: sqlite3.Connection) -> None:
     cols = {r[1] for r in c.execute("PRAGMA table_info(positions)")}
-    if "image" not in cols:
-        c.execute("ALTER TABLE positions ADD COLUMN image TEXT")
+    for name, ddl in (("image", "TEXT"), ("adds", "INTEGER NOT NULL DEFAULT 0"), ("score", "REAL")):
+        if name not in cols:
+            c.execute(f"ALTER TABLE positions ADD COLUMN {name} {ddl}")
 
 
 def add_tick(position_id: int, price: float, ts: float | None = None) -> None:

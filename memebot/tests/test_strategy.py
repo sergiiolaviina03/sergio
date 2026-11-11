@@ -59,7 +59,36 @@ def test_exits():
     assert strategy.check_exit(pos(), 1.7, 20000, now, S) == ("take_profit_1", S.tp1_sell_frac)
     assert strategy.check_exit(pos(), 1.1, 1000, now, S) == ("liquidez_cae", 1.0)
     assert strategy.check_exit(pos(), 1.1, 20000, now, S) is None
-    p = pos(tp1_done=1, peak_price=2.0)
-    assert strategy.check_exit(p, 1.5, 20000, now, S) == ("trailing_stop", 1.0)
-    assert strategy.check_exit(pos(tp1_done=1, peak_price=3.1), 3.1, 20000, now, S) == ("take_profit_2", 1.0)
-    assert strategy.check_exit(pos(opened_at=now - 9999 * 60), 1.0, 20000, now, S)[0] == "tiempo_maximo"
+    p = pos(tp1_done=1, peak_price=1.5)
+    assert strategy.check_exit(p, 1.3, 20000, now, S) == ("trailing_stop", 1.0)
+    assert strategy.check_exit(pos(tp1_done=1, peak_price=1.6), 1.6, 20000, now, S) == ("take_profit_2", 1.0)
+    assert strategy.check_exit(pos(opened_at=now - 9999 * 60, tp1_done=1), 1.2, 20000, now, S)[0] == "tiempo_maximo"
+    # sin movimiento tras N minutos libera el capital
+    stuck = pos(opened_at=now - (S.stagnation_minutes + 1) * 60)
+    assert strategy.check_exit(stuck, 1.01, 20000, now, S) == ("sin_movimiento", 1.0)
+    # va ganando pero se apaga la presión compradora -> asegura
+    fade = {"txns": {"m5": {"buys": 3, "sells": 20}}}
+    assert strategy.check_exit(pos(), 1.08, 20000, now, S, fade) == ("momentum_perdido", 1.0)
+    assert strategy.check_exit(pos(), 0.99, 20000, now, S, fade) is None   # sin ganancia no aplica
+
+
+def test_score_and_sizing():
+    hot = good_pair()
+    hot["txns"]["m5"] = {"buys": 80, "sells": 20}
+    hot["volume"]["m5"] = 20000
+    hot["priceChange"]["m5"] = 8
+    cold = good_pair()
+    cold["txns"]["m5"] = {"buys": 10, "sells": 10}
+    cold["volume"]["m5"] = 500
+    cold["priceChange"]["m5"] = -5
+    hs, _ = strategy.score_market(hot)
+    cs, _ = strategy.score_market(cold)
+    assert hs > cs + 25 and 0 <= cs <= hs <= 90
+    # más convicción -> entra con más, nunca menos que la base ni más que el máximo
+    lo = strategy.position_size(S.min_score, S)
+    hi = strategy.position_size(90, S)
+    assert abs(lo - S.position_size_sol) < 1e-9
+    assert abs(hi - S.position_size_sol * S.size_mult_max) < 1e-9
+    assert lo < strategy.position_size(70, S) < hi
+    assert strategy.score_safety(None) == 0
+    assert strategy.score_safety({"score_normalised": 1, "topHolders": []}) > 9

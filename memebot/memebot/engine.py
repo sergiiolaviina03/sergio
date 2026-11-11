@@ -18,6 +18,7 @@ class Engine:
         self.last_scan = 0.0
         self.stats = {"scanned": 0, "rejected": 0, "bought": 0}
         self._pending: dict[int, str] = {}   # salidas pendientes de confirmar (id -> motivo)
+        self.radar: dict[str, dict] = {}     # últimas evaluaciones (para la vista Radar del panel)
 
     # ---------- control ----------
     def start(self) -> None:
@@ -87,21 +88,58 @@ class Engine:
 
         async def vet(mint: str):
             pair = pairs.get(mint)
-            ok, why = (False, "sin par") if not pair else strategy.check_entry(pair, s)
+            if not pair:
+                return mint, None, False, "sin par", 0.0
+            score = strategy.score_market(pair)[0]
+            ok, why = strategy.check_entry(pair, s, score)
             if ok:                                    # RugCheck solo si pasa el filtro de mercado (con caché)
                 async with sem:
-                    ok, why = strategy.check_rugcheck(await self._rugcheck(mint), s)
-            return mint, pair, ok, why
+                    rep = await self._rugcheck(mint)
+                ok, why = strategy.check_rugcheck(rep, s)
+                score += strategy.score_safety(rep)
+                if ok and score < s.min_score:
+                    ok, why = False, f"convicción {score:.0f} < {s.min_score:.0f}"
+            return mint, pair, ok, why, score
 
-        for mint, pair, ok, why in await asyncio.gather(*(vet(m) for m in mints)):
+        results = await asyncio.gather(*(vet(m) for m in mints))
+        results.sort(key=lambda r: r[4], reverse=True)          # primero lo más convincente
+        for mint, pair, ok, why, score in results:
             self.stats["scanned"] += 1
             self._mark_seen(mint, "ok" if ok else why)
+            self._radar_update(mint, pair, score, "ok" if ok else why)
             if not ok:
                 self.stats["rejected"] += 1
                 continue
-            if len(self.open_positions()) >= s.max_open_positions or mint in {p["mint"] for p in self.open_positions()}:
+            cur = self.open_positions()
+            if len(cur) >= s.max_open_positions or mint in {p["mint"] for p in cur}:
                 continue
-            await self._open(mint, pair, s)
+            size = strategy.position_size(score, s)
+            room = s.max_exposure_sol - sum(p["entry_sol"] * p["tokens"] / p["tokens_initial"] for p in cur)
+            size = min(size, room)
+            if size < s.position_size_sol * 0.4:
+                continue                                         # sin hueco de exposición
+            await self._open(mint, pair, s, size, score)
+
+    def _radar_update(self, mint: str, pair: dict | None, score: float, verdict: str) -> None:
+        if not pair:
+            return
+        tx = (pair.get("txns") or {}).get("m5") or {}
+        self.radar[mint] = {
+            "mint": mint, "symbol": (pair.get("baseToken") or {}).get("symbol", "?"),
+            "image": (pair.get("info") or {}).get("imageUrl"), "score": round(score, 1), "verdict": verdict,
+            "price": pair.get("priceUsd"), "c5": (pair.get("priceChange") or {}).get("m5"),
+            "c1": (pair.get("priceChange") or {}).get("h1"),
+            "liq": (pair.get("liquidity") or {}).get("usd"), "mcap": pair.get("marketCap") or pair.get("fdv"),
+            "buys": tx.get("buys", 0), "sells": tx.get("sells", 0), "ts": time.time(),
+        }
+        if len(self.radar) > 150:
+            for k in sorted(self.radar, key=lambda k: self.radar[k]["ts"])[:50]:
+                del self.radar[k]
+
+    def radar_list(self, n: int = 40) -> list[dict]:
+        cutoff = time.time() - 600
+        rows = [r for r in self.radar.values() if r["ts"] > cutoff]
+        return sorted(rows, key=lambda r: (r["verdict"] != "ok", -r["score"]))[:n]
 
     @staticmethod
     def _cooldown(verdict: str) -> float:
@@ -111,7 +149,7 @@ class Engine:
         if verdict.startswith(("mint authority", "freeze authority", "riesgo", "holder", "top10", "score")):
             return 1800     # problema estructural: no cambia
         if verdict.startswith(("liquidez 0", "sin par", "sin informe")):
-            return 120
+            return 30       # token recién creado: en unos segundos tendrá pool
         return 25           # mercado (momentum, ratio, volumen...): cambia rápido
 
     _rug_cache: dict[str, tuple[float, dict | None]] = {}
@@ -130,10 +168,10 @@ class Engine:
         with db.tx() as c:
             c.execute("INSERT OR REPLACE INTO seen(mint,ts,verdict) VALUES(?,?,?)", (mint, time.time(), verdict))
 
-    async def _open(self, mint: str, pair: dict, s) -> None:
+    async def _open(self, mint: str, pair: dict, s, size_sol: float | None = None, score: float = 0.0) -> None:
         price = float(pair["priceUsd"])
         sym = (pair.get("baseToken") or {}).get("symbol", "?")
-        fill = await self.executor.buy(mint, price, s.position_size_sol, s)
+        fill = await self.executor.buy(mint, price, size_sol or s.position_size_sol, s)
         if not fill.ok:
             db.log("warn", f"compra fallida {sym}: {fill.error}")
             return
@@ -141,9 +179,9 @@ class Engine:
         with db.tx() as c:
             cur = c.execute(
                 """INSERT INTO positions(mint,symbol,pair,mode,opened_at,entry_price,entry_sol,tokens,
-                   tokens_initial,peak_price,last_price,image) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
+                   tokens_initial,peak_price,last_price,image,score) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (mint, sym, pair.get("pairAddress"), self.executor.mode, now, price, fill.sol,
-                 fill.tokens, fill.tokens, price, price, (pair.get("info") or {}).get("imageUrl")))
+                 fill.tokens, fill.tokens, price, price, (pair.get("info") or {}).get("imageUrl"), score))
             c.execute("INSERT OR REPLACE INTO ticks(position_id,ts,price) VALUES(?,?,?)",
                       (cur.lastrowid, int(now), price))
             c.execute("INSERT INTO trades(position_id,ts,side,mint,symbol,price,tokens,sol,reason,tx,mode) "
@@ -151,7 +189,7 @@ class Engine:
                       (cur.lastrowid, now, "buy", mint, sym, price, fill.tokens, fill.sol, "entrada",
                        fill.tx, self.executor.mode))
         self.stats["bought"] += 1
-        db.log("info", f"COMPRA {sym} a ${price:.8g} ({fill.sol} SOL)")
+        db.log("info", f"COMPRA {sym} a ${price:.8g} ({fill.sol:.3f} SOL · convicción {score:.0f})")
 
     # ---------- monitorización / salidas ----------
     async def _monitor_loop(self) -> None:
@@ -186,16 +224,49 @@ class Engine:
                           (price, pos["peak_price"], pos["id"]))
                 c.execute("INSERT OR REPLACE INTO ticks(position_id,ts,price) VALUES(?,?,?)",
                           (pos["id"], int(now), price))
-            decision = strategy.check_exit(pos, price, liq, now, s)
+            decision = strategy.check_exit(pos, price, liq, now, s, pair)
             if not decision:
                 self._pending.pop(pos["id"], None)
+                await self._maybe_scale_in(pos, pair, price, s)
                 continue
             # confirmación: exige 2 lecturas seguidas con el mismo motivo (filtra ticks falsos del feed)
-            if decision[0] != "tiempo_maximo" and self._pending.get(pos["id"]) != decision[0]:
+            if decision[0] not in ("tiempo_maximo", "sin_movimiento") and self._pending.get(pos["id"]) != decision[0]:
                 self._pending[pos["id"]] = decision[0]
                 continue
             self._pending.pop(pos["id"], None)
             await self._sell(pos, price, *decision, s)
+
+    async def _maybe_scale_in(self, pos: dict, pair: dict, price: float, s) -> None:
+        """Refuerzo: la posición gana y la convicción sigue alta -> añade una vez."""
+        if not s.scale_in_enabled or pos["adds"] >= 1 or pos["tp1_done"]:
+            return
+        chg = (price / pos["entry_price"] - 1) * 100
+        if not (s.scale_in_trigger_pct <= chg < s.take_profit_1_pct - 2):
+            return
+        score = strategy.score_market(pair)[0] + strategy.score_safety((self._rug_cache.get(pos["mint"]) or (0, None))[1])
+        if score < s.scale_in_min_score:
+            return
+        cur = self.open_positions()
+        used = sum(p["entry_sol"] * p["tokens"] / p["tokens_initial"] for p in cur)
+        size = s.position_size_sol * s.scale_in_size_mult
+        if used + size > s.max_exposure_sol:
+            return
+        fill = await self.executor.buy(pos["mint"], price, size, s)
+        if not fill.ok:
+            return
+        old_t, old_p = pos["tokens_initial"], pos["entry_price"]
+        avg = (old_t * old_p + fill.tokens * price) / (old_t + fill.tokens)
+        now = time.time()
+        with db.tx() as c:
+            c.execute("UPDATE positions SET entry_price=?, entry_sol=entry_sol+?, tokens=tokens+?, "
+                      "tokens_initial=tokens_initial+?, adds=adds+1 WHERE id=?",
+                      (avg, fill.sol, fill.tokens, fill.tokens, pos["id"]))
+            c.execute("INSERT INTO trades(position_id,ts,side,mint,symbol,price,tokens,sol,reason,tx,mode) "
+                      "VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+                      (pos["id"], now, "buy", pos["mint"], pos["symbol"], price, fill.tokens, fill.sol,
+                       "refuerzo", fill.tx, self.executor.mode))
+        self.stats["bought"] += 1
+        db.log("info", f"REFUERZO {pos['symbol']} +{fill.sol:.3f} SOL (convicción {score:.0f}, {chg:+.1f}%)")
 
     async def _sell(self, pos: dict, price: float, reason: str, frac: float, s) -> None:
         tokens = pos["tokens"] * frac
@@ -220,3 +291,6 @@ class Engine:
                 c.execute("UPDATE positions SET tokens=?, realized_sol=?, tp1_done=1 WHERE id=?",
                           (remaining, realized, pos["id"]))
         db.log("info", f"VENTA {pos['symbol']} {reason} ({fill.sol:.4f} SOL)")
+        if closing:
+            pnl = realized - pos["entry_sol"]
+            db.log("info", f"RESULTADO {pos['symbol']} {pnl / pos['entry_sol'] * 100:+.1f}% ({pnl:+.4f} SOL)")

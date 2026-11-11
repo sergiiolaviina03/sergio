@@ -1,9 +1,6 @@
 fastapi>=0.110
-uvicorn[standard]>=0.29
+uvicorn>=0.29
 httpx>=0.27
-solders>=0.21
-base58>=2.1
 itsdangerous>=2.1
 python-dotenv>=1.0
-pytest>=8
-pytest-asyncio>=0.23
+segno>=1.6
