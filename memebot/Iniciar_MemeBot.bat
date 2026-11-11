@@ -52,18 +52,19 @@ if not exist ".venv\deps_ok.txt" (
   echo ok> ".venv\deps_ok.txt"
 )
 
-rem ---- 3b. Cerrar cualquier MemeBot anterior que siga ocupando el puerto 8000 (solo procesos python)
-powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { $p = Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue; if ($p -and $p.ProcessName -like 'python*') { Stop-Process -Id $p.Id -Force; Write-Host 'Cerrado un MemeBot anterior que seguia abierto.' } }" >> "%LOG%" 2>&1
+rem ---- 3b. Cerrar cualquier MemeBot anterior que siga ocupando el puerto 8000/8765 (solo procesos python)
+powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort 8000,8765 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { $p = Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue; if ($p -and $p.ProcessName -like 'python*') { Stop-Process -Id $p.Id -Force; Write-Host 'Cerrado un MemeBot anterior que seguia abierto.' } }" >> "%LOG%" 2>&1
 
 rem ---- 4. Arrancar (HOST=0.0.0.0 permite verlo tambien desde el movil en tu wifi)
 set "HOST=0.0.0.0"
+set "PORT=8765"
 echo [3/3] Arrancando MemeBot...
 echo.
 echo   Se abrira el navegador en unos segundos. Si ves "conexion rechazada", pulsa F5.
 echo   Si Windows pregunta por el Firewall, pulsa PERMITIR (es para verlo desde el movil).
 echo   NO CIERRES ESTA VENTANA mientras quieras que el bot funcione.
 echo.
-start "" cmd /c "timeout /t 6 >nul & start http://127.0.0.1:8000"
+start "" cmd /c "timeout /t 6 >nul & start http://127.0.0.1:8765"
 ".venv\Scripts\python.exe" run.py
 if errorlevel 1 goto :fail
 pause

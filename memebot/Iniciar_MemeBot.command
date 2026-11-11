@@ -11,6 +11,7 @@ if [ ! -f .venv/deps_ok ]; then
   pip install --disable-pip-version-check -q -r requirements.txt && touch .venv/deps_ok || { echo "Falló la instalación"; read -r -p "Enter para salir"; exit 1; }
 fi
 export HOST="${HOST:-0.0.0.0}"
-( sleep 4; if command -v open >/dev/null; then open http://127.0.0.1:8000; elif command -v xdg-open >/dev/null; then xdg-open http://127.0.0.1:8000; fi ) &
+export PORT="${PORT:-8765}"
+( sleep 4; if command -v open >/dev/null; then open http://127.0.0.1:$PORT; elif command -v xdg-open >/dev/null; then xdg-open http://127.0.0.1:$PORT; fi ) &
 python run.py
 read -r -p "El bot se ha detenido. Enter para salir"
