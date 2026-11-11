@@ -143,32 +143,49 @@ def position_size(score: float, s: Settings) -> float:
     return s.position_size_sol * (1 + (s.size_mult_max - 1) * k)
 
 
+def exit_params(pos: dict, s: Settings) -> dict:
+    """Parámetros de salida de la posición: los de su estrategia, y lo que falte, de los ajustes globales."""
+    import json
+    x = {}
+    if pos.get("params"):
+        try:
+            x = json.loads(pos["params"])
+        except ValueError:
+            x = {}
+    return {"sl": x.get("sl", s.stop_loss_pct), "tp1": x.get("tp1", s.take_profit_1_pct),
+            "tp1_frac": x.get("tp1_frac", s.tp1_sell_frac), "tp2": x.get("tp2", s.take_profit_2_pct),
+            "trail": x.get("trail", s.trailing_stop_pct), "hold": x.get("hold", s.max_hold_minutes),
+            "stag": x.get("stag", s.stagnation_minutes), "stag_band": x.get("stag_band", s.stagnation_band_pct),
+            "fade": x.get("fade", s.momentum_fade_ratio)}
+
+
 def check_exit(pos: dict, price: float, liq_usd: float, now: float, s: Settings,
                pair: dict | None = None) -> tuple[str, float] | None:
     """Devuelve (motivo, fracción_a_vender_de_lo_restante) o None."""
+    x = exit_params(pos, s)
     entry = pos["entry_price"]
     chg = (price / entry - 1) * 100
     peak = max(pos["peak_price"], price)
     held_min = (now - pos["opened_at"]) / 60
     if liq_usd and liq_usd < s.min_liquidity_exit_usd:
         return "liquidez_cae", 1.0
-    if chg <= -s.stop_loss_pct:
+    if chg <= -x["sl"]:
         return "stop_loss", 1.0
     if not pos["tp1_done"]:
-        if chg >= s.take_profit_1_pct:
-            return "take_profit_1", s.tp1_sell_frac
+        if chg >= x["tp1"]:
+            return "take_profit_1", x["tp1_frac"]
     else:
-        if chg >= s.take_profit_2_pct:
+        if chg >= x["tp2"]:
             return "take_profit_2", 1.0
-        if price <= peak * (1 - s.trailing_stop_pct / 100):
+        if price <= peak * (1 - x["trail"] / 100):
             return "trailing_stop", 1.0
     if pair and chg > 3:      # va ganando pero la presión compradora se apaga: asegura
         m5 = (pair.get("txns") or {}).get("m5") or {}
         b, sl = m5.get("buys", 0), m5.get("sells", 0)
-        if b + sl >= 10 and b / max(sl, 1) < s.momentum_fade_ratio:
+        if b + sl >= 10 and b / max(sl, 1) < x["fade"]:
             return "momentum_perdido", 1.0
-    if not pos["tp1_done"] and held_min >= s.stagnation_minutes and abs(chg) <= s.stagnation_band_pct:
+    if not pos["tp1_done"] and held_min >= x["stag"] and abs(chg) <= x["stag_band"]:
         return "sin_movimiento", 1.0
-    if held_min >= s.max_hold_minutes:
+    if held_min >= x["hold"]:
         return "tiempo_maximo", 1.0
     return None

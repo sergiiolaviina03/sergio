@@ -11,7 +11,7 @@
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/static/icon-192.png">
 <link rel="apple-touch-icon" href="/static/icon-192.png">
-<title>MemeBot · v3</title>
+<title>MemeBot · v4</title>
 <script src="/lightweight-charts.js"></script>
 <style>
 :root{
@@ -73,7 +73,7 @@ button.sm{padding:6px 12px;font-size:12px;border-radius:10px}
 .ringw svg{display:block}
 .hero-chart{height:110px;margin:8px -6px 4px}
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-.stat{background:rgba(0,0,0,.22);border:1px solid var(--line);border-radius:14px;padding:9px 11px}
+.stat{min-width:0;overflow:hidden;background:rgba(0,0,0,.22);border:1px solid var(--line);border-radius:14px;padding:9px 11px}
 .stat .v{font-size:16px;font-weight:800;margin-top:1px;white-space:nowrap}
 .bar{height:5px;border-radius:9px;background:rgba(255,255,255,.08);margin-top:6px;overflow:hidden}
 .bar i{display:block;height:100%;width:0;border-radius:9px;background:linear-gradient(90deg,var(--c),var(--v));transition:width .8s cubic-bezier(.2,1,.3,1)}
@@ -183,6 +183,43 @@ input[type=checkbox]{width:auto;margin-right:6px}
 #login .box{width:min(400px,100%);padding:30px}
 #login h1{margin:0 0 4px;font-size:26px}#login p{color:var(--mut);margin:0 0 16px}
 
+/* ---------- laboratorio ---------- */
+.lab-top{display:grid;gap:12px;grid-template-columns:1fr 1fr;margin-bottom:12px}
+@media(max-width:900px){.lab-top{grid-template-columns:1fr}}
+.reg .big2{font-size:24px;font-weight:800;margin:2px 0 8px}
+.meter{position:relative;height:10px;border-radius:99px;background:linear-gradient(90deg,var(--r),#475069 45%,var(--g));margin:10px 4px 6px}
+.meter i{position:absolute;top:-5px;width:20px;height:20px;border-radius:50%;background:#fff;border:3px solid var(--c);transform:translateX(-50%);box-shadow:0 0 16px var(--c);transition:left 1s cubic-bezier(.2,1,.3,1)}
+.meter-l{display:flex;justify-content:space-between;color:var(--mut);font-size:10.5px}
+.wbar{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--mut);margin:3px 0}
+.wbar span:first-child{width:118px;white-space:nowrap}
+.wbar .tr{flex:1;height:7px;border-radius:9px;background:rgba(255,255,255,.07);position:relative;overflow:hidden}
+.wbar .tr i{position:absolute;top:0;bottom:0;border-radius:9px}
+.lab-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(350px,1fr))}
+.sc{padding:14px;position:relative;overflow:hidden;border-top:3px solid var(--sc)}
+.sc.off{opacity:.55}
+.sc .h{display:flex;gap:10px;align-items:center}.sc .em{font-size:28px}
+.sc .tt{font-weight:800;font-size:16px;line-height:1.1}
+.sc .ds{color:var(--mut);font-size:12px;margin:8px 0 8px}
+.kv{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:8px 0}
+.kv div{background:rgba(0,0,0,.22);border:1px solid var(--line);border-radius:12px;padding:6px 8px}
+.kv small{display:block;color:var(--mut);font-size:9.5px;text-transform:uppercase;letter-spacing:.5px}.kv b{font-size:14px}
+.vd{font-size:10.5px;font-weight:800;padding:2px 9px;border-radius:99px;border:1px solid var(--line);margin-left:auto;white-space:nowrap}
+.vd.ventaja{color:var(--g);border-color:rgba(52,211,153,.5);background:rgba(52,211,153,.12)}
+.vd.pierde{color:var(--r);border-color:rgba(251,113,133,.5);background:rgba(251,113,133,.1)}
+.vd.sin_ventaja{color:var(--y);border-color:rgba(251,191,36,.45);background:rgba(251,191,36,.08)}
+.vd.en_prueba,.vd.sin_datos{color:var(--mut)}
+.sw{position:relative;width:44px;height:26px;flex:none;border-radius:99px;background:rgba(255,255,255,.12);cursor:pointer;transition:background .25s;border:0;padding:0;box-shadow:none}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .25s cubic-bezier(.3,1.6,.5,1)}
+.sw.on{background:var(--sc)}.sw.on::after{transform:translateX(18px)}
+.spark{height:46px;margin:6px 0 2px}.spark svg{width:100%;height:100%}
+.evid{margin-top:14px;padding:14px 16px;border-radius:16px;border:1px solid rgba(251,191,36,.35);background:rgba(251,191,36,.06);color:var(--tx);font-size:13px}
+.evid b{color:var(--y)}
+.heat{display:grid;grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:6px;margin-bottom:14px}
+.ht{border-radius:14px;padding:8px 9px;min-height:62px;display:flex;flex-direction:column;justify-content:space-between;font-weight:800;font-size:12px;transition:transform .2s,background .6s;color:#fff;border:1px solid rgba(255,255,255,.08)}
+.ht:hover{transform:scale(1.06)}.ht small{font-weight:600;opacity:.85}
+.stg{font-size:10px;font-weight:800;padding:0 7px;border-radius:99px;border:1px solid currentColor}
+@media(max-width:760px){.kv{grid-template-columns:repeat(2,1fr)}.bottom button{font-size:9.5px;padding:7px 0}.bottom svg{width:20px;height:20px}}
+
 /* ---------- móvil ---------- */
 .bottom{display:none}
 @media(max-width:760px){
@@ -226,6 +263,7 @@ input[type=checkbox]{width:auto;margin-right:6px}
     <span id="modeC" class="chip"></span>
     <span class="chip"><span id="dot" class="dot"></span><span id="runT"></span></span>
     <span class="chip hide-m">SOL <b id="solp">–</b></span>
+    <span class="chip hide-m" id="regC" title="Estado del mercado (amplitud)"></span>
     <div class="sp"></div>
     <button class="ghost sm" id="snd" title="Sonido y vibración">🔕</button>
     <button id="toggle" class="sm"></button>
@@ -244,7 +282,7 @@ input[type=checkbox]{width:auto;margin-right:6px}
       <div class="stat"><div class="k">Saldo</div><div class="v" id="s-bal">–</div></div>
       <div class="stat"><div class="k">Hoy</div><div class="v" id="s-day">–</div></div>
       <div class="stat"><div class="k">Expuesto</div><div class="v" id="s-exp">–</div><div class="bar"><i id="s-expbar"></i></div></div>
-      <div class="stat"><div class="k">Analizados</div><div class="v" id="s-scan">–</div><div class="note" id="s-scan2"></div></div>
+      <div class="stat"><div class="k">Vistos</div><div class="v" id="s-scan">–</div><div class="note" id="s-scan2"></div></div>
     </div>
   </div>
 
@@ -257,7 +295,12 @@ input[type=checkbox]{width:auto;margin-right:6px}
       <span id="scanTxt"></span><br><span class="note">Cuando algo pase los filtros aparecerá aquí con su gráfico en directo.</span>
     </div>
   </section>
-  <section class="view" id="v-radar" hidden><div class="rlist" id="rlist"></div></section>
+  <section class="view" id="v-radar" hidden><h2>Mapa de calor · cambio 5 min</h2><div class="heat" id="heat"></div><div class="rlist" id="rlist"></div></section>
+  <section class="view" id="v-lab" hidden>
+    <div class="lab-top"><div class="glass card reg" id="regBox"></div><div class="glass card" id="learnBox"></div></div>
+    <div class="lab-grid" id="labGrid"></div>
+    <div class="evid" id="evid"></div>
+  </section>
   <section class="view" id="v-hist" hidden><div class="sumrow" id="sum"></div><div class="hlist" id="hlist"></div></section>
   <section class="view" id="v-set" hidden><div class="glass card" id="setBox"></div></section>
   <section class="view" id="v-mob" hidden><div class="glass card" id="mobBox"></div></section>
@@ -349,7 +392,7 @@ function updateCard(p){const c=cards[p.id]||buildCard(p);c.p=p;const pct=p.pnl_p
   if(c.lastPrice!=null&&p.last_price!==c.lastPrice){pe.classList.remove('flash-up','flash-down');void pe.offsetWidth;pe.classList.add(p.last_price>c.lastPrice?'flash-up':'flash-down')}
   c.lastPrice=p.last_price;
   c.root.querySelector('.big .s').textContent=f(p.value_sol,4)+' SOL · $'+fp(p.last_price);
-  c.root.querySelector('.tags').innerHTML=((p.score||0)>=70?'<span class="badge hot">⚡ CONVICCIÓN '+Math.round(p.score)+'</span>':(p.score?'<span class="badge">'+Math.round(p.score)+'</span>':''))+(p.adds?'<span class="badge hot">+REFUERZO</span>':'');
+  const sm=LABMETA[p.strategy];c.root.querySelector('.tags').innerHTML=(sm?`<span class="stg" style="color:${sm.color}">${sm.icon} ${esc(sm.label)}</span>`:'')+((p.score||0)>=70?'<span class="badge hot">⚡ CONVICCIÓN '+Math.round(p.score)+'</span>':(p.score?'<span class="badge">'+Math.round(p.score)+'</span>':''))+(p.adds?'<span class="badge hot">+REFUERZO</span>':'');
   if(!c.dex){c.series.applyOptions({lineColor:col,topColor:up?'rgba(52,211,153,.28)':'rgba(251,113,133,.25)',bottomColor:'rgba(0,0,0,0)'});setLines(c,p)}
   const lo=p.sl_price,hi=p.tp2_price,pos=v=>Math.max(0,Math.min(100,(v-lo)/(hi-lo)*100)),g=c.root.querySelector('.gauge');
   g.querySelectorAll('.n').forEach(n=>n.style.left=pos(p[n.dataset.k==='entry'?'entry_price':n.dataset.k+'_price'])+'%');
@@ -384,12 +427,42 @@ function renderHero(s){
   const m=new Map();m.set(data[0].time-60,0);data.forEach(x=>m.set(x.time,x.value));
   eqS.setData([...m].sort((a,b)=>a[0]-b[0]).map(([time,value])=>({time,value})));eq.timeScale().fitContent()}
 
+/* ---------- laboratorio ---------- */
+let LABMETA={};
+const VD={sin_datos:'Sin datos',en_prueba:'En prueba',sin_ventaja:'Sin ventaja',pierde:'Pierde',ventaja:'Ventaja ✓'};
+function spark(eq,col){if(!eq||eq.length<2)return '<div class="note" style="padding:12px 0">La curva aparece con las primeras operaciones cerradas.</div>';
+  const mn=Math.min(0,...eq),mx=Math.max(0,...eq),rg=(mx-mn)||1,w=300,h=46,pts=eq.map((v,i)=>[i/(eq.length-1)*w,h-4-(v-mn)/rg*(h-8)]);
+  const z=h-4-(0-mn)/rg*(h-8),c=eq[eq.length-1]>=0?'#34d399':'#fb7185';
+  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><line x1="0" x2="${w}" y1="${z}" y2="${z}" stroke="rgba(255,255,255,.12)" stroke-dasharray="3 4"/><polyline fill="none" stroke="${c}" stroke-width="2" stroke-linejoin="round" points="${pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}"/></svg>`}
+function renderLab(L){
+  LABMETA=Object.fromEntries(L.strategies.map(x=>[x.key,x]));
+  const r=L.regime,pos=Math.round(r.breadth*100),lbl={bajista:'Bajista 🔻',neutral:'Neutral ⚖️',alcista:'Alcista 🔺'}[r.label];
+  $('#regBox').innerHTML=`<h2>Estado del mercado</h2><div class="big2">${lbl}</div><div class="meter"><i style="left:${pos}%"></i></div><div class="meter-l"><span>Todo cae</span><span>${pos}% de tokens al alza (5 min)</span><span>Todo sube</span></div>
+    <div class="note" style="margin-top:10px">${r.label==='bajista'?'El bot <b>reduce el tamaño a la mitad</b> y exige más convicción.':r.label==='alcista'?'El bot <b>aumenta un 20 %</b> el tamaño de las entradas.':'Tamaño normal.'} Basado en ${r.n} tokens líquidos.</div>`;
+  const ln=L.learner,w=ln.weights||{},mx=Math.max(0.01,...Object.values(w).map(Math.abs));
+  $('#learnBox').innerHTML=`<h2>El bot aprende de sí mismo</h2><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px"><span class="vd ${ln.active?'ventaja':'sin_datos'}" style="margin:0">${ln.active?'MODELO ACTIVO':'APAGADO'}</span><span class="note">${ln.n||0} operaciones guardadas${ln.auc!=null?` · acierto fuera de muestra (AUC) <b>${ln.auc}</b>`:''}</span></div>
+    ${Object.keys(w).length?Object.entries(w).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])).slice(0,5).map(([k,v])=>`<div class="wbar"><span>${esc(k.replace(/_/g,' '))}</span><span class="tr"><i style="${v>=0?`left:50%;width:${Math.abs(v)/mx*50}%;background:var(--g)`:`right:50%;width:${Math.abs(v)/mx*50}%;background:var(--r)`}"></i></span><span>${v>0?'+':''}${v}</span></div>`).join(''):''}
+    <div class="note" style="margin-top:8px">${ln.active?'Supera la validación con datos que no vio al entrenar: ajusta la convicción hasta ±12 puntos.':`Entrena con tus operaciones cerradas (mín. 40) y <b>solo se usa si acierta con datos nuevos</b> (AUC ≥ 0.58). Si solo ve ruido, se queda apagado.`}</div>`;
+  $('#labGrid').innerHTML=L.strategies.map(x=>{const m=x.mean,ci=x.ci;
+    return `<div class="glass sc ${x.enabled?'':'off'}" style="--sc:${x.color}"><div class="h"><span class="em">${x.icon}</span><div><div class="tt">${esc(x.label)}</div><div class="note">${x.open} abiertas · peso ×${f(x.weight,2)}</div></div><span class="vd ${x.verdict}">${VD[x.verdict]}</span></div>
+    <div class="ds">${esc(x.desc)}</div>
+    <div class="kv"><div><small>Operaciones</small><b>${x.n}</b></div><div><small>Acierto</small><b>${x.n?f(x.wins/x.n*100,0)+'%':'–'}</b></div><div><small>Media / op.</small><b class="${cls(m)}">${m==null?'–':(m>0?'+':'')+f(m*100,1)+'%'}</b></div><div><small>Total</small><b class="${cls(x.pnl_sol)}">${x.n?(x.pnl_sol>0?'+':'')+f(x.pnl_sol,3):'–'}</b></div></div>
+    ${ci?`<div class="note">IC 95 %: <b>${f(ci[0]*100,1)}%</b> a <b>${f(ci[1]*100,1)}%</b> ${ci[0]>0?'· el 0 queda fuera: ventaja real':ci[1]<0?'· claramente negativa':'· el 0 cabe dentro: no se distingue de la suerte'}</div>`:'<div class="note">Necesita más operaciones para medirse.</div>'}
+    <div class="spark">${spark(x.equity)}</div>
+    <div style="display:flex;align-items:center;gap:10px;margin-top:6px"><button class="sw ${x.enabled?'on':''}" data-k="${x.key}" aria-label="Activar ${esc(x.label)}"></button><span class="note">${x.enabled?'Activa':'Apagada'}${x.avg_hold_min?` · duración media ${f(x.avg_hold_min,0)} min`:''}</span></div></div>`}).join('');
+  $$('#labGrid .sw').forEach(b=>b.onclick=async()=>{await api('/api/strategies',{method:'POST',body:JSON.stringify({key:b.dataset.k,enabled:!b.classList.contains('on')})});vibe(20);refresh()});
+  $('#evid').innerHTML=`<b>Ojo con la evidencia.</b> Los estudios independientes con miles de lanzamientos <b>no encuentran ventaja</b> comprando memecoins con datos públicos: la mayoría de estrategias pierden de media tras costes. Por eso cada estrategia tiene que <b>demostrarlo aquí</b>: ≥ ${L.min_trades} operaciones con el intervalo de confianza por encima de 0. Con <b>dinero real solo operan las que lo consiguen</b>; en simulación corren todas para medirlas. Un acierto del 60 % con pérdidas grandes sigue siendo perder.`;
+  const rc=$('#regC');rc.textContent={bajista:'🔻 Mercado bajista',neutral:'⚖️ Neutral',alcista:'🔺 Mercado alcista'}[r.label];rc.style.color=r.label==='bajista'?'var(--r)':r.label==='alcista'?'var(--g)':'var(--mut)'}
+
 /* ---------- radar ---------- */
-function renderRadar(rows){
+function renderHeat(rows){const t=rows.slice(0,36);
+  $('#heat').innerHTML=t.map(r=>{const c=Number(r.c5||0),a=Math.min(1,Math.abs(c)/15),bg=c>=0?`rgba(52,211,153,${.18+a*.6})`:`rgba(251,113,133,${.18+a*.6})`;
+    return `<a class="ht" style="background:${bg}" target="_blank" rel="noopener" href="https://dexscreener.com/solana/${esc(r.mint)}"><span>${esc((r.symbol||'?').slice(0,9))}</span><small>${c>0?'+':''}${f(c,1)}% · ${Math.round(r.score)}</small></a>`}).join('')}
+function renderRadar(rows){renderHeat(rows);
   $('#rlist').innerHTML=rows.map((r,i)=>{const ok=r.verdict==='ok',c5=Number(r.c5||0);
     return `<a class="glass rd ${ok?'ok':''}" style="animation-delay:${Math.min(i,12)*30}ms" target="_blank" rel="noopener" href="https://dexscreener.com/solana/${esc(r.mint)}">
     <div class="score" data-s="${r.score}"></div>${icoHTML(r.image,r.symbol)}
-    <div class="mid"><div class="t" style="color:var(--tx)">${esc(r.symbol)} ${ok?'<span class="badge hot">COMPRADO</span>':''}</div>
+    <div class="mid"><div class="t" style="color:var(--tx)">${esc(r.symbol)} ${ok?'<span class="badge hot">COMPRADO</span>':''}${r.strategy&&LABMETA[r.strategy]?`<span class="stg" style="color:${LABMETA[r.strategy].color}">${LABMETA[r.strategy].icon} ${esc(LABMETA[r.strategy].label)}</span>`:''}</div>
     <div class="ch"><span class="${c5>0?'pos':c5<0?'neg':''}">${c5>0?'+':''}${f(c5,1)}% 5m</span><span>B/S ${r.buys}/${r.sells}</span><span>Liq $${kfmt(r.liq)}</span><span>MC $${kfmt(r.mcap)}</span></div>
     <div class="v">${ok?'Pasó todos los filtros':esc(r.verdict)}</div></div></a>`}).join('')||'<div class="glass empty">El radar está vacío: el bot aún no ha analizado nada.</div>';
   $$('#rlist .score').forEach(e=>ring(e,+e.dataset.s))}
@@ -400,7 +473,7 @@ function renderHist(s){closedRows=s.closed;const c=s.closed,w=c.filter(r=>r.pnl_
   const hold=c.length?c.reduce((a,r)=>a+(r.closed_at-r.opened_at),0)/c.length/60:0;
   $('#sum').innerHTML=[['Operaciones',s.trades_closed],['Ganadas',w+' / '+c.length],['Mejor',s.best==null?'–':'+'+f(s.best,3)+' SOL'],['Peor',s.worst==null?'–':f(s.worst,3)+' SOL'],['Duración media',f(hold,1)+' min']]
     .map(x=>`<span class="chip">${x[0]} <b>${x[1]}</b></span>`).join('');
-  $('#hlist').innerHTML=c.map((r,i)=>`<div class="glass hi" data-i="${i}">${icoHTML(r.image,r.symbol)}<div class="mid"><div class="t">${esc(r.symbol)}</div><div class="v">${esc(RS[r.exit_reason]||r.exit_reason)} · ${ago(r.closed_at)} · ${f(r.entry_sol,3)} SOL${r.adds?' · refuerzo':''}</div></div>
+  $('#hlist').innerHTML=c.map((r,i)=>`<div class="glass hi" data-i="${i}">${icoHTML(r.image,r.symbol)}<div class="mid"><div class="t">${esc(r.symbol)}</div><div class="v">${LABMETA[r.strategy]?LABMETA[r.strategy].icon+' '+esc(LABMETA[r.strategy].label)+' · ':''}${esc(RS[r.exit_reason]||r.exit_reason)} · ${ago(r.closed_at)} · ${f(r.entry_sol,3)} SOL${r.adds?' · refuerzo':''}</div></div>
     <div class="pill ${cls(r.pnl_sol)}">${sgn(r.pnl_sol/r.entry_sol*100)}</div></div>`).join('')||'<div class="glass empty">Aún no hay operaciones cerradas.</div>';
   $$('#hlist .hi').forEach(e=>e.onclick=()=>openModal(closedRows[e.dataset.i]))}
 let mc=null;
@@ -476,8 +549,9 @@ const ICON={live:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
  radar:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M12 12l6-6"/></svg>',
  hist:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
  set:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>',
+ lab:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6M10 3v6L4.5 19a1.5 1.5 0 0 0 1.3 2.2h12.4a1.5 1.5 0 0 0 1.3-2.2L14 9V3"/><path d="M7.5 15h9"/></svg>',
  mob:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="3"/><path d="M11 18h2"/></svg>'};
-const TABS=[['live','En directo'],['radar','Radar'],['hist','Historial'],['set','Ajustes'],['mob','Móvil']];
+const TABS=[['live','En directo'],['radar','Radar'],['lab','Estrategias'],['hist','Historial'],['set','Ajustes'],['mob','Móvil']];
 let view='live';
 function buildNav(){const h=TABS.map(t=>`<button data-v="${t[0]}" class="${t[0]===view?'a':''}">${ICON[t[0]]}<span>${t[1]}</span>${t[0]==='live'?'<b id="nb-live">0</b>':''}</button>`).join('');
   $('#nav').innerHTML=h;$('#bottom').innerHTML=h;$('#bottom').hidden=false;
@@ -496,7 +570,7 @@ async function refresh(){let s;try{s=await api('/api/state');offline=0}catch(e){
   $('#solp').textContent=s.sol_price?'$'+f(s.sol_price,2):'–';
   const tg=$('#toggle');tg.textContent=s.running?'Detener':'Iniciar';tg.className='sm '+(s.running?'red':'');
   $('#halt').hidden=!s.halted_reason;$('#halt').textContent='⚠ Bot detenido: '+s.halted_reason;
-  renderHero(s);handleLog(s.log);renderHist(s);renderRadar(s.radar);
+  renderLab(s.lab);renderHero(s);handleLog(s.log);renderHist(s);renderRadar(s.radar);
   $$('#nb-live').forEach(e=>e.textContent=s.open.length);
   $('#noPos').hidden=s.open.length>0;
   $('#scanTxt').textContent=s.running?(s.stats.scanned+' analizados · '+(s.stats.candidates||0)+' en el radar ahora'):'El bot está detenido: pulsa «Iniciar».';

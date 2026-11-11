@@ -1,0 +1,24 @@
+57 pools (30 dev / 27 holdout), coste 3% por lado, retraso 1 vela
+origen: {'trending': 57} 
+
+== breakout: mejores parámetros en DEV -> SL 18% TP 100% hold 120m trail 0%
+   DEV      n= 103 media=  -2.1% mediana=  -7.7% acierto=  24% IC95=[-6.6,+2.9]
+   HOLDOUT  n=  84 media=  -7.4% mediana=  -6.0% acierto=  23% IC95=[-9.6,-5.2]
+   fijas SL18/TP20/45m/trail8 · TODOS n= 187 media=  -5.2% mediana=  -6.0% acierto=  20% IC95=[-6.5,-3.8]
+
+== dip_buy: mejores parámetros en DEV -> SL 18% TP 100% hold 120m trail 0%
+   DEV      n=  49 media=  +4.8% mediana= -20.5% acierto=  33% IC95=[-5.7,+16.7]
+   HOLDOUT  n=  23 media=  +6.1% mediana= -20.5% acierto=  35% IC95=[-10.1,+23.4]
+   fijas SL18/TP20/45m/trail8 · TODOS n=  72 media=  -4.2% mediana=  -4.1% acierto=  35% IC95=[-7.1,-1.2]
+
+== vol_spike: mejores parámetros en DEV -> SL 25% TP 100% hold 120m trail 0%
+   DEV      n= 197 media=  -4.8% mediana=  -6.2% acierto=  11% IC95=[-6.9,-2.5]
+   HOLDOUT  n= 171 media=  -5.6% mediana=  -6.1% acierto=  14% IC95=[-7.4,-3.7]
+   fijas SL18/TP20/45m/trail8 · TODOS n= 368 media=  -5.6% mediana=  -5.7% acierto=   8% IC95=[-6.2,-5.0]
+
+early_10m      sin señales suficientes
+== CONTROL_azar: mejores parámetros en DEV -> SL 25% TP 100% hold 120m trail 0%
+   DEV      n= 658 media=  -3.3% mediana=  -6.1% acierto=  19% IC95=[-5.1,-1.5]
+   HOLDOUT  n= 638 media=  -5.0% mediana=  -5.8% acierto=  16% IC95=[-6.0,-3.8]
+   fijas SL18/TP20/45m/trail8 · TODOS n=1296 media=  -5.6% mediana=  -5.8% acierto=  13% IC95=[-5.9,-5.2]
+

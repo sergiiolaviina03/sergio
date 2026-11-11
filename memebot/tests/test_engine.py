@@ -30,8 +30,8 @@ def test_paper_roundtrip(monkeypatch):
     asyncio.run(run())
     assert e.open_positions() == []
     closed = db.q("SELECT * FROM positions WHERE status='closed'")[0]
-    # entrada y salidas con coste 2% cada una: ~ +96% sobre lo invertido
-    assert 0.9 < closed["pnl_sol"] / closed["entry_sol"] < 1.0
+    # 3 operaciones con coste 3% por lado: el +100% del precio se queda en ~+88%
+    assert 0.8 < closed["pnl_sol"] / closed["entry_sol"] < 0.95
     assert abs(e.executor.balance_sol() - (start_bal + closed["pnl_sol"])) < 1e-9
 
 

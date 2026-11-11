@@ -50,6 +50,7 @@ class Settings:
     max_exposure_sol: float = _f("MAX_EXPOSURE_SOL", 2.0)       # SOL máximos invertidos a la vez
     max_daily_loss_sol: float = _f("MAX_DAILY_LOSS_SOL", 1.0)
     slippage_bps: int = 500
+    paper_cost_pct: float = 3.0           # coste simulado POR LADO (comisión+deslizamiento+MEV medios); realista en memecoins
     # convicción (puntuación 0-100 por señales de mercado + seguridad)
     min_score: float = 42.0                                     # por debajo no entra
     # refuerzo: añade a una posición que va bien y sigue con fuerza

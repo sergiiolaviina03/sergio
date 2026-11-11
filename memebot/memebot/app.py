@@ -15,7 +15,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response as RawRespons
 from itsdangerous import BadSignature, TimestampSigner
 from pydantic import BaseModel
 
-from . import db, sources
+from . import db, lab, learner, sources, strategies
 from .config import Settings, env
 from .engine import Engine
 
@@ -146,6 +146,21 @@ async def state():
         lp = p["last_price"] or p["entry_price"]
         p["value_sol"] = p["realized_sol"] + (p["entry_sol"] * (p["tokens"] / p["tokens_initial"]) * (lp / p["entry_price"]))
         p["pnl_pct"] = (lp / p["entry_price"] - 1) * 100
+    cfg = engine.strategy_cfg()
+    lab_stats = engine.lab_stats()
+    for p in open_pos:
+        p.pop("features", None)
+    for c in closed:
+        c.pop("features", None)
+        c.pop("params", None)
+    lab_out = {
+        "strategies": [dict(key=k, **strategies.META[k], enabled=cfg[k]["enabled"], weight=lab.weight(lab_stats[k]),
+                            live_ok=lab.live_allowed(lab_stats[k]), open=sum(1 for p in open_pos if p["strategy"] == k),
+                            **{**lab_stats[k], "equity": lab_stats[k]["equity"][-80:]}) for k in strategies.KEYS],
+        "regime": engine.regime,
+        "learner": {k: v for k, v in learner.status().items() if k != "model"},
+        "min_trades": lab.MIN_TRADES_VERDICT,
+    }
     equity, acc = [], 0.0
     for r in reversed(closed):
         acc += r["pnl_sol"]
@@ -153,7 +168,7 @@ async def state():
     best = max((r["pnl_sol"] for r in all_closed), default=None)
     worst = min((r["pnl_sol"] for r in all_closed), default=None)
     return {
-        "radar": engine.radar_list(40),
+        "radar": engine.radar_list(40), "lab": lab_out,
         "sol_price": await sources.sol_price_usd(), "equity": equity, "best": best, "worst": worst,
         "mode": ex.mode, "live_possible": env.live_enabled,
         "running": engine.running, "halted_reason": engine.halted_reason,
@@ -187,6 +202,17 @@ async def live(request: Request):
         tr = [dict(r) for r in db.q("SELECT ts,side,price,reason FROM trades WHERE position_id=? ORDER BY ts", (pid,))]
         out[pid] = {"ticks": [{"time": r["ts"], "value": r["price"]} for r in rows], "trades": tr}
     return out
+
+
+@app.post("/api/strategies", dependencies=[Depends(auth)])
+async def set_strategy(request: Request):
+    body = await request.json()
+    if body.get("key") not in strategies.KEYS:
+        raise HTTPException(400, "estrategia desconocida")
+    cfg = db.kv_get("strategy_cfg", {})
+    cfg[body["key"]] = {"enabled": bool(body.get("enabled"))}
+    db.kv_set("strategy_cfg", cfg)
+    return {"ok": True}
 
 
 @app.post("/api/start", dependencies=[Depends(auth)])

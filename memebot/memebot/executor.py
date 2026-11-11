@@ -8,8 +8,6 @@ from . import db, sources
 from .config import SOL_MINT, Settings, env
 
 JUP = "https://lite-api.jup.ag/swap/v1"
-# Coste simulado por operación: comisión de pool + impacto + slippage típico en memecoins
-PAPER_COST = 0.02
 
 
 @dataclass
@@ -31,22 +29,27 @@ class PaperExecutor:
     def _set_balance(self, v: float) -> None:
         db.kv_set("paper_balance", v)
 
-    async def buy(self, mint: str, price_usd: float, sol: float, s: Settings) -> Fill:
+    @staticmethod
+    def _cost(s: Settings, usd: float, liq: float) -> float:
+        """Coste por lado: comisión+deslizamiento+MEV medios (ajuste global) + impacto en el pool (≈ tamaño/liquidez)."""
+        return s.paper_cost_pct / 100 + (min(0.25, usd / liq) if liq > 0 else 0.0)
+
+    async def buy(self, mint: str, price_usd: float, sol: float, s: Settings, liq: float = 0.0) -> Fill:
         bal = self.balance_sol()
         if sol > bal:
             return Fill(False, error="saldo simulado insuficiente")
         sp = await sources.sol_price_usd()
         if sp <= 0 or price_usd <= 0:
             return Fill(False, error="sin precio")
-        tokens = (sol * sp / price_usd) * (1 - PAPER_COST)
+        tokens = (sol * sp / price_usd) * (1 - self._cost(s, sol * sp, liq))
         self._set_balance(bal - sol)
         return Fill(True, tokens=tokens, sol=sol, price=price_usd, tx="paper")
 
-    async def sell(self, mint: str, tokens: float, price_usd: float, s: Settings) -> Fill:
+    async def sell(self, mint: str, tokens: float, price_usd: float, s: Settings, liq: float = 0.0) -> Fill:
         sp = await sources.sol_price_usd()
         if sp <= 0:
             return Fill(False, error="sin precio SOL")
-        sol = tokens * price_usd / sp * (1 - PAPER_COST)
+        sol = tokens * price_usd / sp * (1 - self._cost(s, tokens * price_usd, liq))
         self._set_balance(self.balance_sol() + sol)
         return Fill(True, tokens=tokens, sol=sol, price=price_usd, tx="paper")
 
@@ -127,7 +130,7 @@ class JupiterExecutor:
             raise RuntimeError(str(j["error"])[:300])
         return {"sig": j["result"], "quote": quote}
 
-    async def buy(self, mint: str, price_usd: float, sol: float, s: Settings) -> Fill:
+    async def buy(self, mint: str, price_usd: float, sol: float, s: Settings, liq: float = 0.0) -> Fill:
         try:
             res = await self._swap(SOL_MINT, mint, int(sol * 1e9), s)
             dec = await self._decimals(mint)
@@ -136,7 +139,7 @@ class JupiterExecutor:
         except Exception as e:  # noqa: BLE001
             return Fill(False, error=str(e)[:200])
 
-    async def sell(self, mint: str, tokens: float, price_usd: float, s: Settings) -> Fill:
+    async def sell(self, mint: str, tokens: float, price_usd: float, s: Settings, liq: float = 0.0) -> Fill:
         try:
             bal, dec = await self._token_balance(mint)
             amount = min(int(tokens * 10**dec), bal)

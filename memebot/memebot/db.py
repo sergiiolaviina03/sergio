@@ -58,7 +58,8 @@ def conn() -> sqlite3.Connection:
 
 def _migrate(c: sqlite3.Connection) -> None:
     cols = {r[1] for r in c.execute("PRAGMA table_info(positions)")}
-    for name, ddl in (("image", "TEXT"), ("adds", "INTEGER NOT NULL DEFAULT 0"), ("score", "REAL")):
+    for name, ddl in (("image", "TEXT"), ("adds", "INTEGER NOT NULL DEFAULT 0"), ("score", "REAL"),
+                      ("strategy", "TEXT NOT NULL DEFAULT 'momentum'"), ("params", "TEXT"), ("features", "TEXT")):
         if name not in cols:
             c.execute(f"ALTER TABLE positions ADD COLUMN {name} {ddl}")
 

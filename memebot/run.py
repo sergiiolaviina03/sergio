@@ -6,7 +6,7 @@ import uvicorn
 if __name__ == "__main__":
     host = os.getenv("HOST", "127.0.0.1")
     port = int(os.getenv("PORT", "8000"))
-    print(f"\n  MemeBot v3 listo -> http://127.0.0.1:{port}")
+    print(f"\n  MemeBot v4 listo -> http://127.0.0.1:{port}")
     if host in ("0.0.0.0", "::"):
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sk:
