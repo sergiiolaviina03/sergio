@@ -52,6 +52,9 @@ if not exist ".venv\deps_ok.txt" (
   echo ok> ".venv\deps_ok.txt"
 )
 
+rem ---- 3b. Cerrar cualquier MemeBot anterior que siga ocupando el puerto 8000 (solo procesos python)
+powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { $p = Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue; if ($p -and $p.ProcessName -like 'python*') { Stop-Process -Id $p.Id -Force; Write-Host 'Cerrado un MemeBot anterior que seguia abierto.' } }" >> "%LOG%" 2>&1
+
 rem ---- 4. Arrancar (HOST=0.0.0.0 permite verlo tambien desde el movil en tu wifi)
 set "HOST=0.0.0.0"
 echo [3/3] Arrancando MemeBot...
