@@ -155,3 +155,5 @@ input:focus{border-color:#333}
 .toast{position:fixed;left:50%;top:calc(14px + var(--safe-t));transform:translate(-50%,-150%);background:#151518;border:1px solid #26262b;padding:11px 16px;border-radius:14px;font-size:13.5px;z-index:99;transition:.3s;max-width:92%;box-shadow:0 10px 30px #000}
 .toast.on{transform:translate(-50%,0)}
 .log{margin:8px 16px;font-size:11.5px;color:var(--mut);background:var(--card);border-radius:12px;padding:10px 12px;max-height:160px;overflow:auto}
+.fomo-btn{margin-top:10px;padding:12px;font-size:14px;border-radius:13px}
+.btn{white-space:nowrap}.btn.sm2{flex:none;padding:15px 16px}

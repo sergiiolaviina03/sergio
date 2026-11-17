@@ -5,16 +5,18 @@
 
 // ───────────────────────── Config ─────────────────────────
 const CHAINS = {
-  solana:   { name: 'Solana',   short: 'SOL', color: '#9945ff', gt: 'solana',   gp: 'solana', buy: a => `https://jup.ag/swap/SOL-${a}` },
-  ethereum: { name: 'Ethereum', short: 'ETH', color: '#8a9cff', gt: 'eth',      gp: '1',      buy: a => `https://app.uniswap.org/swap?chain=mainnet&outputCurrency=${a}` },
-  base:     { name: 'Base',     short: 'BASE',color: '#2f6bff', gt: 'base',     gp: '8453',   buy: a => `https://app.uniswap.org/swap?chain=base&outputCurrency=${a}` },
-  bsc:      { name: 'BNB',      short: 'BNB', color: '#f3ba2f', gt: 'bsc',      gp: '56',     buy: a => `https://pancakeswap.finance/swap?outputCurrency=${a}` },
+  solana:   { name: 'Solana',   short: 'SOL', color: '#9945ff', gt: 'solana',   gp: 'solana', fomo: 'solana',   buy: a => `https://jup.ag/swap/SOL-${a}` },
+  ethereum: { name: 'Ethereum', short: 'ETH', color: '#8a9cff', gt: 'eth',      gp: '1',      fomo: 'ethereum', buy: a => `https://app.uniswap.org/swap?chain=mainnet&outputCurrency=${a}` },
+  base:     { name: 'Base',     short: 'BASE',color: '#2f6bff', gt: 'base',     gp: '8453',   fomo: 'base',     buy: a => `https://app.uniswap.org/swap?chain=base&outputCurrency=${a}` },
+  bsc:      { name: 'BNB',      short: 'BNB', color: '#f3ba2f', gt: 'bsc',      gp: '56',     fomo: 'bnb',      buy: a => `https://pancakeswap.finance/swap?outputCurrency=${a}` },
   arbitrum: { name: 'Arbitrum', short: 'ARB', color: '#28a0f0', gt: 'arbitrum', gp: '42161',  buy: a => `https://app.uniswap.org/swap?chain=arbitrum&outputCurrency=${a}` },
   sui:      { name: 'Sui',      short: 'SUI', color: '#4da2ff', gt: 'sui-network' },
   ton:      { name: 'TON',      short: 'TON', color: '#0098ea', gt: 'ton' },
   tron:     { name: 'Tron',     short: 'TRX', color: '#ff060a', gt: 'tron',     gp: 'tron' },
 };
-const GT2DS = Object.fromEntries(Object.entries(CHAINS).map(([k, v]) => [v.gt, k]));
+// Enlace directo a la memecoin en la app Fomo (formato fomo.family/tokens/{cadena}/{contrato})
+const fomoUrl = p => { const s = CHAINS[p.chainId]?.fomo; return s ? `https://fomo.family/tokens/${s}/${encodeURIComponent(p.baseToken.address)}` : null; };
+const GT2DS =Object.fromEntries(Object.entries(CHAINS).map(([k, v]) => [v.gt, k]));
 
 // Palabras clave para descubrir memecoins en todas las cadenas (rotan en cada ciclo)
 const KEYWORDS = ['pepe','doge','shib','inu','bonk','wif','cat','frog','elon','trump','moon','pump','meme','ai','dog',
@@ -482,7 +484,8 @@ function sigCard(t) {
     <div class="meta"><div class="t"><em>$${esc(p.baseToken.symbol)}</em></div><div class="s"><span>${fmtUsd(p.marketCap || p.fdv)}</span><span class="${cls(p.priceChange?.h1)}">${fmtPct(num(p.priceChange?.h1))} 1h</span><span>${CHAINS[p.chainId].name}</span></div></div>
     <div class="verdict"><span class="score s-${a.verdict[1]}">${a.score}</span><b class="${a.verdict[1] === 'a' ? 'up' : ''}">${a.verdict[0]}</b></div></div>
     <div class="reasons">${a.reasons.slice(0, 5).map(x => `<span>${esc(x)}</span>`).join('')}<span>${a.passed}/${a.known} pruebas</span><span>${deepTxt}</span></div>
-    <div class="plan"><div>Entrada<b class="mono">${fmtPrice(price)}</b></div><div>Tamaño<b>${pct}%</b></div><div>TP<b class="up">${fmtPrice(price * (1 + S.settings.tp / 100))}</b></div><div>SL<b class="down">${fmtPrice(price * (1 - S.settings.sl / 100))}</b></div></div></div>`;
+    <div class="plan"><div>Entrada<b class="mono">${fmtPrice(price)}</b></div><div>Tamaño<b>${pct}%</b></div><div>TP<b class="up">${fmtPrice(price * (1 + S.settings.tp / 100))}</b></div><div>SL<b class="down">${fmtPrice(price * (1 - S.settings.sl / 100))}</b></div></div>
+    ${fomoUrl(p) ? `<a class="btn buy fomo-btn" data-ext="1" href="${esc(fomoUrl(p))}" target="_blank" rel="noopener">Comprar $${esc(p.baseToken.symbol)} en Fomo ↗</a>` : ''}</div>`;
 }
 function viewSignals() {
   const arr = filtered().filter(t => t.a.verdict[1] <= 'b').sort((a, b) => b.a.score - a.a.score);
@@ -595,7 +598,7 @@ function renderSheet(full) {
   const sh = $('#sheet');
   const ckRow = k => `<div class="ck"><i class="${k.ok === null ? 'na' : k.ok ? 'ok' : k.hard ? 'ko' : 'wa'}">${k.ok === null ? '–' : k.ok ? '✓' : '✕'}</i><span class="n">${esc(k.name)}</span><span class="v">${esc(k.v)}</span></div>`;
   const local = a.checks.filter(k => !k.deep), deep = a.checks.filter(k => k.deep);
-  const links = [...(p.info?.websites || []).map(w => [w.label || 'Web', w.url]), ...(p.info?.socials || []).map(s => [s.type, s.url]), ['DexScreener', p.url]];
+  const links = [...(fomoUrl(p) ? [['Fomo', fomoUrl(p)]] : []), ...(p.info?.websites || []).map(w => [w.label || 'Web', w.url]), ...(p.info?.socials || []).map(s => [s.type, s.url]), ['DexScreener', p.url]];
   const buyUrl = ch.buy ? ch.buy(p.baseToken.address) : p.url;
   const usTxt = t._us ? (t._us < 1 ? t._us.toFixed(2) : t._us.toFixed(1)) + ' µs' : '';
   const partA = `
@@ -620,7 +623,11 @@ function renderSheet(full) {
     sh.innerHTML = `<div class="grab"></div><div id="shA">${partA}</div><div class="chart" id="chart"></div><div id="shB">${partB}</div>`;
     $('#chart').innerHTML = `<iframe src="https://dexscreener.com/${p.chainId}/${p.pairAddress}?embed=1&theme=dark&trades=0&info=0&chartLeftToolbar=0&chartTheme=dark&interval=5" loading="lazy"></iframe>`;
     document.querySelector('.cta')?.remove();
-    document.body.insertAdjacentHTML('beforeend', `<div class="cta"><a class="btn buy" href="${esc(buyUrl)}" target="_blank" rel="noopener">Comprar en ${ch.buy ? (p.chainId === 'solana' ? 'Jupiter' : p.chainId === 'bsc' ? 'PancakeSwap' : 'Uniswap') : 'DEX'}</a><button class="btn ghost" data-paper="100" style="flex:.55">Simular</button></div>`);
+    const dexName = ch.buy ? (p.chainId === 'solana' ? 'Jupiter' : p.chainId === 'bsc' ? 'PancakeSwap' : 'Uniswap') : 'DEX';
+    const fu = fomoUrl(p);
+    document.body.insertAdjacentHTML('beforeend', fu
+      ? `<div class="cta"><a class="btn buy" href="${esc(fu)}" target="_blank" rel="noopener">Comprar en Fomo</a><a class="btn ghost sm2" href="${esc(buyUrl)}" target="_blank" rel="noopener" title="${dexName}">DEX</a><button class="btn ghost sm2" data-paper="100">Sim</button></div>`
+      : `<div class="cta"><a class="btn buy" href="${esc(buyUrl)}" target="_blank" rel="noopener">Comprar en ${dexName}</a><button class="btn ghost" data-paper="100" style="flex:.55">Simular</button></div>`);
   } else {
     // actualización parcial: el gráfico (iframe) no se recarga
     $('#shA').innerHTML = partA; $('#shB').innerHTML = partB;
@@ -643,6 +650,7 @@ function remoteSearch(q) {
 
 // ───────────────────────── Eventos ─────────────────────────
 document.addEventListener('click', e => {
+  if (e.target.closest('[data-ext]')) return; // enlaces externos (Fomo) se abren sin abrir la ficha
   const el = e.target.closest('[data-tab],[data-chain],[data-sort],[data-k],[data-close],[data-star],[data-paper],[data-sell],[data-set],[data-seg],[data-copy],[data-tab-go],[data-reset]');
   if (!el) { if (e.target.id === 'btnSettings') { S.tab = 'settings'; render(); } return; }
   const ds = el.dataset;
