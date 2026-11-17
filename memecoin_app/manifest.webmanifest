@@ -1,0 +1,13 @@
+{
+  "name": "MemeRadar",
+  "short_name": "MemeRadar",
+  "description": "Radar de memecoins en directo con 20+ pruebas de seguridad",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

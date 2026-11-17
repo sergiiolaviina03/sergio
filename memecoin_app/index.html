@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>MemeRadar</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app">
+  <header class="top">
+    <div class="brand"><span class="logo"></span>MemeRadar</div>
+    <div class="live" id="live"><span class="dot"></span><span id="liveTxt">conectando…</span></div>
+    <button class="icon-btn" id="btnSettings" aria-label="Ajustes">⚙</button>
+  </header>
+
+  <div class="chips" id="chainChips"></div>
+  <div class="ticker" id="ticker"></div>
+
+  <main id="view"></main>
+
+  <nav class="tabbar" id="tabbar">
+    <button data-tab="radar" class="on"><i>◎</i><span>Radar</span></button>
+    <button data-tab="signals"><i>⚡</i><span>Señales</span></button>
+    <button data-tab="search"><i>⌕</i><span>Buscar</span></button>
+    <button data-tab="watch"><i>★</i><span>Favs</span></button>
+    <button data-tab="wallet"><i>◈</i><span>Cartera</span></button>
+  </nav>
+</div>
+
+<div class="sheet-bg" id="sheetBg"></div>
+<section class="sheet" id="sheet" aria-modal="true" role="dialog"></section>
+<div class="toast" id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

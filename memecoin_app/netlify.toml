@@ -1,0 +1,32 @@
+[build]
+  publish = "."
+
+# Proxies sin backend: evitan problemas de CORS con las APIs de seguridad
+[[redirects]]
+  from = "/api/ds/*"
+  to = "https://api.dexscreener.com/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/gt/*"
+  to = "https://api.geckoterminal.com/api/v2/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/gp/*"
+  to = "https://api.gopluslabs.io/api/v1/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/rc/*"
+  to = "https://api.rugcheck.xyz/v1/:splat"
+  status = 200
+  force = true
+
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
