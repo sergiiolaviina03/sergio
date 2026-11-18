@@ -124,6 +124,19 @@ def room_bg(cr, t, prm):
         for i in range(8):
             cr.rectangle(i * 95 + 8, 120, 78, 760); cr.fill()
         setc(cr, '#c9a14a'); text(cr, '⚖', 360, 260, 120, '#c9a14a', a=0.5)
+    elif kind == 'shop':
+        setc(cr, '#f2e6d6', 0.12); cr.rectangle(0, 120, W, 60); cr.fill()
+        text(cr, 'MODA AKI', 360, 165, 46, '#ffe9c7', a=0.9)
+        rnd = R(13)
+        for rod_y in (520,):
+            setc(cr, '#9aa3ad'); cr.rectangle(20, rod_y, W - 40, 8); cr.fill()
+            x = 40
+            while x < W - 70:
+                col = rnd.choice(['#c0262d', '#2b6cb0', '#e8a33a', '#3a7a5a', '#e8e2d0', '#7a5aa0', '#1a1a1a'])
+                setc(cr, '#cfd4da'); cr.set_line_width(3); cr.move_to(x + 25, rod_y + 4); cr.line_to(x + 25, rod_y + 22); cr.stroke()
+                setc(cr, col); poly(cr, [(x, rod_y + 22), (x + 50, rod_y + 22), (x + 56, rod_y + 50), (x + 46, rod_y + 52), (x + 46, rod_y + 170), (x + 4, rod_y + 170), (x + 4, rod_y + 52), (x - 6, rod_y + 50)]); cr.fill()
+                x += 58
+        glow(cr, 360, 100, 500, '#ffd59a', 0.18)
     elif kind == 'plain':
         pass
     lamp = prm.get('lamp')
@@ -330,7 +343,7 @@ def sc_stamp(cr, t, p, prm, cast):
         y += fs * 1.05
     cr.restore()
     if prm.get('sub'):
-        text(cr, prm['sub'], 360, 640 + tot / 2 + 70, 34, '#ff4d5e', a=ease((t - 0.4) / 0.4))
+        text(cr, prm['sub'], 360, 640 + tot / 2 + 70, 34, prm.get('subcol', '#ff4d5e'), a=ease((t - 0.4) / 0.4))
 
 
 def sc_evidence(cr, t, p, prm, cast):
@@ -795,6 +808,37 @@ def sc_court(cr, t, p, prm, cast):
             cr.restore()
 
 
-SCENES = dict(char=sc_char, duo=sc_duo, eyes=sc_eyes, map=sc_map, news=sc_news, stamp=sc_stamp, evidence=sc_evidence,
+def sc_slide(cr, t, p, prm, cast):
+    acc = prm.get('acc', '#4fd1c5')
+    bg_fill(cr, '#0b1020', '#141a30')
+    glow(cr, 360, 760, 560, acc, 0.14)
+    k = back_out(t / 0.4)
+    cr.save(); cr.translate(360, 560); cr.scale(k, k)
+    tag = prm.get('tag')
+    if tag:
+        tw = text_w(cr, tag, 26) + 40
+        setc(cr, acc); rrect(cr, -tw / 2, -120, tw, 46, 23); cr.fill()
+        text(cr, tag, 0, -88, 26, '#0b1020')
+    text(cr, prm['title'], 0, 0, 56, '#ffffff')
+    cr.restore()
+    items = prm.get('items', [])
+    for i, it in enumerate(items):
+        ap = 0.08 + i * 0.75 / max(1, len(items))
+        if p < ap and t > 0.2:
+            continue
+        kk = ease((p - ap) * 8) if t > 0.2 else 0
+        y = 650 + i * 120
+        cr.save(); cr.translate((1 - kk) * 80, 0)
+        setc(cr, '#ffffff', 0.07 * kk); rrect(cr, 60, y, 600, 96, 18); cr.fill()
+        setc(cr, acc, kk); rrect(cr, 60, y, 10, 96, 5); cr.fill()
+        setc(cr, acc, kk); cr.arc(115, y + 48, 24, 0, TAU); cr.fill()
+        text(cr, it[0], 115, y + 58, 28, '#0b1020', a=kk)
+        lines = wrap(cr, it[1], 30, 500)
+        for j, ln in enumerate(lines[:2]):
+            text(cr, ln, 155, y + (58 if len(lines) == 1 else 42 + j * 36), 30, '#ffffff', align='left', a=kk)
+        cr.restore()
+
+
+SCENES = dict(slide=sc_slide, char=sc_char, duo=sc_duo, eyes=sc_eyes, map=sc_map, news=sc_news, stamp=sc_stamp, evidence=sc_evidence,
               object=sc_object, house=sc_house, forest=sc_forest, street=sc_street, hallway=sc_hallway, door=sc_door,
               court=sc_court)
