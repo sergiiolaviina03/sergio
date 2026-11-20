@@ -97,27 +97,62 @@ def lightning(t):
             v = max(v, (1 - dt / 0.35) * (0.9 if dt < 0.08 else 0.5))
     return v
 
-def draw_lines(img, lines, t0, t, y_center, size=46, font=SERIF_B, color=(225, 215, 200),
-               stagger=0.55, glow=(120, 0, 0)):
-    d_layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    d = ImageDraw.Draw(d_layer)
-    f = F(font, size)
-    while max(d.textlength(l, font=f) for l in lines) > W - 60 and size > 20:
-        size -= 2; f = F(font, size)
-    lh = size * 1.35
-    y = y_center - lh * len(lines) / 2
+FD = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts")
+def FS(fam, w, style="normal"):
+    for d in os.listdir(FD):
+        if d.startswith("fontsource-" + fam + "-"):
+            return os.path.join(FD, d, "files", f"{fam}-latin-{w}-{style}.woff")
+THIN = FS("montserrat", 200)        # narración: fina, moderna
+LIGHT = FS("montserrat", 300)
+BLACK = FS("montserrat", 900)
+TITLE = FS("cinzel", 400)           # nombre del equipo
+ITAL = FS("cormorant-garamond", 300, "italic")  # frases sueltas
+
+def flicker(t, seed):
+    r = random.Random(int(t * 30) * 131 + seed)
+    return 0.55 if r.random() < 0.06 else 1.0
+
+def tracked_width(d, text, f, tr):
+    return sum(d.textlength(c, font=f) for c in text) + tr * (len(text) - 1)
+
+def draw_lines(img, lines, t0, t, y_center, size=30, font=None, color=(220, 220, 225),
+               stagger=0.55, glow=(140, 10, 10), track=0.22, upper=True, lh_mult=1.9,
+               flick=True):
+    font = font or THIN
+    if upper: lines = [l.upper() for l in lines]
+    probe = ImageDraw.Draw(Image.new("L", (1, 1)))
+    f = F(font, size); tr = size * track
+    while max(tracked_width(probe, l, f, tr) for l in lines) > W - 70 and size > 14:
+        size -= 1; f = F(font, size); tr = size * track
+    lh = size * lh_mult
+    y = y_center - lh * (len(lines) - 1) / 2 - size * 0.6
+    out = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     for i, ln in enumerate(lines):
-        a = ease((t - t0 - i * stagger) / 0.6)
+        a = ease((t - t0 - i * stagger) / 0.9)
         if a <= 0:
             y += lh; continue
-        tw = d.textlength(ln, font=f)
-        d.text(((W - tw) / 2, y + (1 - a) * 12), ln, font=f,
-               fill=color + (int(255 * a),))
+        layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        d = ImageDraw.Draw(layer)
+        x = (W - tracked_width(d, ln, f, tr)) / 2
+        al = int(255 * a * (flicker(t, i) if flick else 1))
+        for c in ln:
+            d.text((x, y), c, font=f, fill=color + (al,))
+            x += d.textlength(c, font=f) + tr
+        if a < 1:  # aparece desenfocado y se enfoca
+            layer = layer.filter(ImageFilter.GaussianBlur((1 - a) * 6))
+        out = Image.alpha_composite(out, layer)
         y += lh
-    g = d_layer.filter(ImageFilter.GaussianBlur(10))
-    gr = Image.new("RGBA", (W, H), glow + (0,)); gr.putalpha(g.getchannel("A"))
+    g = out.filter(ImageFilter.GaussianBlur(14))
+    gr = Image.new("RGBA", (W, H), glow + (0,))
+    gr.putalpha(g.getchannel("A").point(lambda v: int(v * 0.9)))
     img.paste(gr, (0, 0), gr)
-    img.paste(d_layer, (0, 0), d_layer)
+    img.paste(out, (0, 0), out)
+
+def hairline(img, y, a, w=140, color=(200, 200, 205)):
+    if a <= 0: return
+    d = ImageDraw.Draw(img, "RGBA")
+    ww = w * a
+    d.line([(W / 2 - ww, y), (W / 2 + ww, y)], fill=color + (int(150 * a),), width=1)
 
 def paste_center(img, logo, cy, alpha=1.0, angle=0.0, dx=0, dy=0):
     lg = logo.rotate(angle, resample=Image.BICUBIC, expand=True) if angle else logo
@@ -149,20 +184,28 @@ def render(t):
         glow = fit(palinka, 380).filter(ImageFilter.GaussianBlur(25))
         paste_center(img, glow, H * 0.42, al * 0.6)
         paste_center(img, pal_big, H * 0.42, al)
-        draw_lines(img, ["PALINKA CF", "presenta"], 1.0, lt, H * 0.74, 34, SERIF_B,
-                   (210, 225, 245), 0.5, (20, 50, 120))
+        draw_lines(img, ["Palinka CF"], 1.0, lt, H * 0.72, 30, LIGHT, (215, 228, 245),
+                   glow=(20, 50, 130), track=0.45)
+        hairline(img, H * 0.755, ease((lt - 1.5) / 0.8) * fade_out)
+        draw_lines(img, ["presenta"], 1.8, lt, H * 0.79, 20, THIN, (170, 185, 210),
+                   glow=(20, 50, 130), track=0.6)
         if fade_out < 1:
             img = Image.blend(Image.new("RGB", (W, H)), img, fade_out)
     elif kind == "text":
         img = base_bg(t, flash=lightning(t))
-        draw_lines(img, data, a, t, H * 0.48, 46 if len(data) < 3 else 42, SERIF_I if len(data) == 1 else SERIF_B)
+        if len(data) == 1:
+            draw_lines(img, data, a, t, H * 0.48, 58, ITAL, (230, 225, 220), upper=False, track=0.02)
+        else:
+            draw_lines(img, data, a, t, H * 0.48, 28, THIN)
         img = Image.blend(Image.new("RGB", (W, H)), img, fade_out)
     elif kind == "crest":
         img = base_bg(t, (10, 12, 26), flash=lightning(t))
         al = ease((lt - 0.2) / 0.5)
         paste_center(img, cp_dark, H * 0.38, al, dy=(1 - al) * 30)
-        draw_lines(img, data[:1], a + 0.9, t, H * 0.68, 36, SERIF_I)
-        draw_lines(img, data[1:], a + 1.5, t, H * 0.75, 52, SERIF_B, (230, 60, 60))
+        draw_lines(img, data[:1], a + 0.9, t, H * 0.69, 21, THIN, (190, 190, 200), track=0.5)
+        draw_lines(img, data[1:], a + 1.5, t, H * 0.755, 46, TITLE, (215, 40, 45),
+                   glow=(150, 0, 0), track=0.14)
+        hairline(img, H * 0.80, ease((lt - 2.0) / 0.8), 110, (200, 60, 60))
         img = Image.blend(Image.new("RGB", (W, H)), img, fade_out)
     elif kind == "fall":
         img = base_bg(t, flash=lightning(t))
@@ -171,7 +214,7 @@ def render(t):
         sm = desat_dark(fit(palace, int(300 - 110 * k)), min(1, 0.35 + 0.65 * k))
         paste_center(img, sm, H * 0.30 + k * 120, 1 - 0.6 * k, angle=-25 * k,
                      dx=math.sin(t * 40) * 3 * k)
-        draw_lines(img, data, a + 0.3, t, H * 0.70, 38, SERIF_B)
+        draw_lines(img, data, a + 0.3, t, H * 0.70, 26, THIN)
         last_frame = img.copy()
     elif kind == "freeze":
         # congelado + efecto "disco rayado": temblor y desaturación
@@ -184,17 +227,17 @@ def render(t):
     elif kind == "wait":
         img = last_frame.convert("L").convert("RGB").point(lambda v: int(v * 0.65))
         bar = Image.new("RGBA", (W, H), (0, 0, 0, 150)); img.paste(bar, (0, 0), bar)
-        draw_lines(img, data, a, t, H * 0.5, 64, SERIF_I, (255, 255, 255), glow=(0, 0, 0))
+        draw_lines(img, data, a, t, H * 0.5, 72, ITAL, (255, 255, 255), glow=(0, 0, 0),
+                   upper=False, track=0.02, flick=False, stagger=0)
     elif kind == "nope":
         img = last_frame.convert("L").convert("RGB").point(lambda v: int(v * 0.4))
-        f = F(SANS_B, 74)
         d = ImageDraw.Draw(img)
         s = 1 + 0.25 * max(0, 1 - lt / 0.15)
-        f = F(SANS_B, int(74 * s))
+        f = F(BLACK, int(70 * s))
         tw = d.textlength(data[0], font=f)
         d.text(((W - tw) / 2, H * 0.45), data[0], font=f, fill=(255, 210, 0),
                stroke_width=6, stroke_fill="black")
-        f2 = F(SANS_B, 30)
+        f2 = F(LIGHT, 26)
         if lt > 0.35:
             sub = "Así fue de verdad 👇".replace(" 👇", "")
             tw = d.textlength(sub, font=f2)
