@@ -190,7 +190,11 @@ def render_scene(t, kind, a, b, lt, dur, data, fade_out):
     if kind == "logo":
         img = base_bg(t, (8, 4, 14))
         al = ease(lt / 1.6) * fade_out
-        paste_center(img, pal_big, H * 0.42, al)
+        # aparece desde la oscuridad: se ilumina (no se transparenta) y se acerca un poco
+        lg = fit(palinka, int(360 * (0.94 + 0.06 * ease(lt / 3.5))))
+        rgb = lg.convert("RGB").point(lambda v: int(v * al))
+        lg2 = rgb.convert("RGBA"); lg2.putalpha(lg.getchannel("A").point(lambda v: int(v * min(1, al * 4))))
+        paste_center(img, lg2, H * 0.42)
         draw_lines(img, ["Palinka CF"], 1.0, lt, H * 0.72, 30, LIGHT, (215, 228, 245),
                    glow=(20, 50, 130), track=0.45)
         hairline(img, H * 0.755, ease((lt - 1.5) / 0.8) * fade_out)
