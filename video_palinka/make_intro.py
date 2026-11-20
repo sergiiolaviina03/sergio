@@ -3,7 +3,7 @@ Uso: python3 make_intro.py ORIGINAL.mov SALIDA.mp4 [escudo_palinka.png] [escudo_
 """
 import sys, os, math, subprocess, random, wave
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont, ImageFilter
+from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageChops
 
 W, H, FPS, SR = 576, 1024, 30, 44100
 SRC, OUT = sys.argv[1], sys.argv[2]
@@ -142,10 +142,6 @@ def draw_lines(img, lines, t0, t, y_center, size=30, font=None, color=(220, 220,
             layer = layer.filter(ImageFilter.GaussianBlur((1 - a) * 6))
         out = Image.alpha_composite(out, layer)
         y += lh
-    g = out.filter(ImageFilter.GaussianBlur(14))
-    gr = Image.new("RGBA", (W, H), glow + (0,))
-    gr.putalpha(g.getchannel("A").point(lambda v: int(v * 0.9)))
-    img.paste(gr, (0, 0), gr)
     img.paste(out, (0, 0), out)
 
 def hairline(img, y, a, w=140, color=(200, 200, 205)):
@@ -171,6 +167,12 @@ pal_big = fit(palinka, 360)
 cp_big = fit(palace, 360)
 cp_dark = desat_dark(cp_big, 0.35)
 
+def fog_over(img, t):
+    # niebla muy suave por encima de todo: integra escudos y texto con el fondo
+    off = int((t * 30 + W / 2) % W)
+    fog = fog_base.crop((off, 0, off + W, H)).point(lambda v: int(v * 0.10))
+    return ImageChops.add(img, Image.merge("RGB", [fog] * 3))
+
 last_frame = None
 def render(t):
     global last_frame
@@ -178,11 +180,16 @@ def render(t):
         if a <= t < b: break
     lt = t - a; dur = b - a
     fade_out = 1 - ease((lt - (dur - 0.45)) / 0.45) if kind not in ("freeze", "wait", "nope", "fall") else 1
+    if kind in ("logo", "text", "crest"):
+        img = render_scene(t, kind, a, b, lt, dur, data, fade_out)
+        return fog_over(img, t)
+    return render_scene(t, kind, a, b, lt, dur, data, fade_out)
+
+def render_scene(t, kind, a, b, lt, dur, data, fade_out):
+    global last_frame
     if kind == "logo":
         img = base_bg(t, (8, 4, 14))
         al = ease(lt / 1.6) * fade_out
-        glow = fit(palinka, 380).filter(ImageFilter.GaussianBlur(25))
-        paste_center(img, glow, H * 0.42, al * 0.6)
         paste_center(img, pal_big, H * 0.42, al)
         draw_lines(img, ["Palinka CF"], 1.0, lt, H * 0.72, 30, LIGHT, (215, 228, 245),
                    glow=(20, 50, 130), track=0.45)
@@ -199,7 +206,7 @@ def render(t):
             draw_lines(img, data, a, t, H * 0.48, 28, THIN)
         img = Image.blend(Image.new("RGB", (W, H)), img, fade_out)
     elif kind == "crest":
-        img = base_bg(t, (10, 12, 26), flash=lightning(t))
+        img = base_bg(t, flash=lightning(t))
         al = ease((lt - 0.2) / 0.5)
         paste_center(img, cp_dark, H * 0.38, al, dy=(1 - al) * 30)
         draw_lines(img, data[:1], a + 0.9, t, H * 0.69, 21, THIN, (190, 190, 200), track=0.5)
@@ -215,6 +222,7 @@ def render(t):
         paste_center(img, sm, H * 0.30 + k * 120, 1 - 0.6 * k, angle=-25 * k,
                      dx=math.sin(t * 40) * 3 * k)
         draw_lines(img, data, a + 0.3, t, H * 0.70, 26, THIN)
+        img = fog_over(img, t)
         last_frame = img.copy()
     elif kind == "freeze":
         # congelado + efecto "disco rayado": temblor y desaturación
