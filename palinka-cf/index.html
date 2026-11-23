@@ -275,6 +275,7 @@ tr.us td.pos{color:var(--ice)}
 .bdg{font-family:var(--f-disp);font-weight:800;font-size:.85rem;padding:2px 8px;border-radius:999px;background:rgba(5,13,31,.6);border:1px solid var(--line);display:flex;align-items:center;gap:4px}
 .bdg.g::before{content:"";width:9px;height:9px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff,#9fb6d8)}
 .bdg.m{color:var(--night);background:var(--gold);border-color:var(--gold)}
+.bdg.r::before{content:"";width:7px;height:10px;border-radius:2px;background:var(--red)}
 .bdg.y::before{content:"";width:7px;height:10px;border-radius:2px;background:var(--yellow)}
 .back{transform:rotateY(180deg);background:linear-gradient(170deg,#0d2556,#050d1f);gap:8px}
 .back h4{margin:0;font-family:var(--f-disp);font-weight:900;text-transform:uppercase;font-size:1.15rem;line-height:1;letter-spacing:.02em}
@@ -448,7 +449,7 @@ footer a{color:var(--ice)}
         <div class="eyebrow">Temporada 2026·27</div>
         <h2>Pleno de <em>victorias</em></h2>
       </div>
-      <p class="lead rv">Cinco partidos, cinco victorias y solo cuatro goles encajados: la defensa menos goleada de la 2ª División.</p>
+      <p class="lead rv">Seis partidos, seis victorias y solo cinco goles encajados: la defensa menos goleada de la 2ª División.</p>
       <div class="stats" id="stats"></div>
       <div class="form rv" id="form"><span>Racha</span></div>
       <div class="results" id="results"></div>
@@ -459,9 +460,9 @@ footer a{color:var(--ice)}
     <div class="wrap">
       <div class="rv">
         <div class="eyebrow">Clasificación · 2ª División</div>
-        <h2>Empatados <em>arriba</em></h2>
+        <h2>Líderes en <em>solitario</em></h2>
       </div>
-      <p class="lead rv">Palinka y Kristal Palace comparten 15 puntos. Solo la diferencia de goles los separa antes de verse las caras.</p>
+      <p class="lead rv">Tras ganar 3-1 a Kristal Palace, Palinka manda en la 2ª División con 18 puntos, tres más que Kristal Palace y Lyons FC.</p>
       <div class="tbl-wrap rv">
         <table>
           <thead><tr><th>#</th><th class="tm">Equipo</th><th>PJ</th><th class="opt">G</th><th class="opt">E</th><th class="opt">P</th><th>GF</th><th>GC</th><th>DIF</th><th>PTS</th></tr></thead>
@@ -497,7 +498,7 @@ footer a{color:var(--ice)}
         <div class="panel rv">
           <h3>MVP del partido</h3>
           <div class="mvp" id="mvp"></div>
-          <p class="lead" style="font-size:.88rem">Jorge Martínez Recuero suma dos MVP y es además el máximo goleador del equipo, con 5 tantos.</p>
+          <p class="lead" style="font-size:.88rem">Jorge Martínez Recuero y Manuel Ventosa suman dos MVP cada uno. Jorge es además el máximo goleador del equipo, con 5 tantos, y Manuel marcó dos contra Kristal Palace.</p>
         </div>
       </div>
     </div>
@@ -509,7 +510,7 @@ footer a{color:var(--ice)}
         <div class="eyebrow">Tarjetas</div>
         <h2>Juego <em>limpio</em></h2>
       </div>
-      <div class="fair rv"><b class="num">2</b><div>tarjetas en toda la temporada, ninguna roja y ningún sancionado. El equipo más limpio de los de arriba.</div></div>
+      <div class="fair rv"><b class="num">3</b><div>tarjetas en seis jornadas: dos amarillas y una roja.</div></div>
       <div class="cards-grid">
         <div class="cbox rv">
           <header><h3>Amarillas</h3><b class="num" style="color:var(--yellow)">2</b></header>
@@ -517,12 +518,10 @@ footer a{color:var(--ice)}
           <div class="booked" id="yellows"></div>
         </div>
         <div class="cbox rv">
-          <header><h3>Rojas</h3><b class="num" style="color:var(--red)">0</b></header>
-          <div class="clean">
-            <div class="ref-card r" style="--r:0deg;opacity:.25"></div>
-            <strong>Ni una roja</strong>
-            <span>El árbitro todavía no ha tenido que sacar el rojo a ningún jugador de Palinka.</span>
-          </div>
+          <header><h3>Rojas</h3><b class="num" style="color:var(--red)">1</b></header>
+          <div class="ref"><div class="ref-card r" style="--r:-6deg"></div></div>
+          <div class="booked reds"><div><i style="background:var(--red)"></i><b>19</b><span>Jorge Martínez Recuero</span></div></div>
+          <p class="lead" style="font-size:.9rem">Sancionado con tres partidos, del 23 de noviembre al 21 de diciembre: se pierde Maias CEF, UA Ajalvirgenes y Deportivo La Excusa.</p>
         </div>
       </div>
     </div>
@@ -544,7 +543,7 @@ footer a{color:var(--ice)}
   <img src="assets/escudo.webp" alt="">
   <div class="wm2">PALINKA CF</div>
   <p>Liga Cobeña F7 · 2ª División · Temporada 2026-27</p>
-  <p>Datos tras la jornada 5 (15 de noviembre de 2026), sacados de la <a href="http://emfcdcobena.ddns.net/cobena/vet_horario_equipo.htm?v=AFAGAKGFAAG3;2" target="_blank" rel="noopener">web oficial de la liga</a>.</p>
+  <p>Datos tras la jornada 6 (22 de noviembre de 2026), sacados de la <a href="http://emfcdcobena.ddns.net/cobena/vet_horario_equipo.htm?v=AFAGAKGFAAG3;2" target="_blank" rel="noopener">web oficial de la liga</a>.</p>
 </footer>
 
 <script>
@@ -554,28 +553,28 @@ const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ---------- DATOS ---------- */
 const PLAYERS = [
-  // dorsal, nombre, apellidos, PJ, goles, amarillas, MVP
-  [0,'Israel','Bañuls Consuegra',3,0,0,0],
-  [0,'Jaime','Ortega Casado',3,0,0,0],
-  [1,'Marco','Pinedo Molina',5,1,0,1],
-  [5,'Marcos','Baeza Calvo',5,0,0,0],
-  [6,'Óscar','Tapiador Bernardo',5,1,1,1],
-  [7,'Raúl','Tejedor Chamard-Bois',5,3,0,0],
-  [8,'Gonzalo','Casado Menaya',5,1,0,0],
-  [9,'Pablo','Gregori Fontenla',4,0,0,0],
-  [10,'Valentín','Monreal Armenteros',5,0,0,0],
-  [11,'George','Ardelean',5,0,0,0],
-  [13,'Gonzalo','de Jesús García López',5,0,0,0],
-  [14,'Juan Carlos','Sánchez-Sierra Cruz',5,1,0,0],
-  [16,'Francisco Javier','del Rosario Ortega',5,2,0,0],
-  [18,'Juan','Collar Rodríguez',5,1,0,0],
-  [19,'Jorge','Martínez Recuero',5,5,0,2],
-  [32,'Ignacio','Hidalgo Monreal',5,1,0,0],
-  [67,'Rodrigo','Quero Cárdenas',4,0,0,0],
-  [69,'Sergio','Laviña Pérez',5,2,0,0],
-  [78,'Carlos Andrés','López Ramírez',5,3,0,0],
-  [82,'Vasile Alexandru','Ciobanu',5,1,1,0],
-  [88,'Manuel','Ventosa Rodríguez',5,2,0,1],
+  // dorsal, nombre, apellidos, PJ, goles, amarillas, MVP, rojas
+  [0,'Israel','Bañuls Consuegra',4,0,0,0,0],
+  [0,'Jaime','Ortega Casado',3,0,0,0,0],
+  [1,'Marco','Pinedo Molina',6,1,0,1,0],
+  [5,'Marcos','Baeza Calvo',5,0,0,0,0],
+  [6,'Óscar','Tapiador Bernardo',6,1,1,1,0],
+  [7,'Raúl','Tejedor Chamard-Bois',6,3,0,0,0],
+  [8,'Gonzalo','Casado Menaya',6,1,0,0,0],
+  [9,'Pablo','Gregori Fontenla',4,0,0,0,0],
+  [10,'Valentín','Monreal Armenteros',5,0,0,0,0],
+  [11,'George','Ardelean',6,0,0,0,0],
+  [13,'Gonzalo','de Jesús García López',6,0,0,0,0],
+  [14,'Juan Carlos','Sánchez-Sierra Cruz',6,1,0,0,0],
+  [16,'Francisco Javier','del Rosario Ortega',6,2,0,0,0],
+  [18,'Juan','Collar Rodríguez',6,1,0,0,0],
+  [19,'Jorge','Martínez Recuero',6,5,0,2,1],
+  [32,'Ignacio','Hidalgo Monreal',6,1,0,0,0],
+  [67,'Rodrigo','Quero Cárdenas',5,0,0,0,0],
+  [69,'Sergio','Laviña Pérez',5,2,0,0,0],
+  [78,'Carlos Andrés','López Ramírez',6,4,0,0,0],
+  [82,'Vasile Alexandru','Ciobanu',6,1,1,0,0],
+  [88,'Manuel','Ventosa Rodríguez',6,4,0,2,0],
 ];
 // jornada, fecha, hora, local, gl, gv, visitante
 const PLAYED = [
@@ -584,10 +583,10 @@ const PLAYED = [
   [3,'2026-10-25','11:10','Lyons FC',2,5,'Palinka CF'],
   [4,'2026-11-08','12:15','Palinka CF',7,1,'Veteranos Alalpardo'],
   [5,'2026-11-15','12:15','Tercer Tiempo',0,5,'Palinka CF'],
+  [6,'2026-11-22','11:10','Palinka CF',3,1,'Kristal Palace'],
 ];
 // fecha, hora, local, visitante
 const FIXTURES = [
-  ['2026-11-22','11:10','Palinka CF','Kristal Palace'],
   ['2026-11-29','13:20','Maias CEF','Palinka CF'],
   ['2026-12-13','10:05','Palinka CF','UA Ajalvirgenes'],
   ['2026-12-20','14:25','Deportivo La Excusa','Palinka CF'],
@@ -607,18 +606,18 @@ const FIXTURES = [
 ];
 // equipo, G, E, P, GF, GC, PTS
 const TABLE = [
-  ['Kristal Palace',5,0,0,39,6,15],
-  ['Palinka CF',5,0,0,24,4,15],
-  ['Lyons FC',4,0,1,12,9,12],
-  ['Anbu FC',3,1,1,13,5,10],
-  ['Recreativo',3,0,2,15,22,9],
-  ['UA Ajalvirgenes',2,1,2,25,20,7],
-  ['Maias CEF',2,1,2,17,13,7],
-  ['Total 90 FC',1,2,2,19,13,5],
-  ['Veteranos Alalpardo',1,1,3,20,28,4],
-  ['Deportivo La Excusa',1,0,4,15,29,3],
-  ['Grupo Archeos',0,0,5,8,28,0],
-  ['Tercer Tiempo',0,0,5,4,34,0],
+  ['Palinka CF',6,0,0,27,5,18],
+  ['Kristal Palace',5,0,1,40,9,15],
+  ['Lyons FC',5,0,1,15,10,15],
+  ['Recreativo',4,0,2,22,25,12],
+  ['Maias CEF',3,1,2,19,13,10],
+  ['Anbu FC',3,1,2,14,8,10],
+  ['Total 90 FC',2,2,2,23,13,8],
+  ['UA Ajalvirgenes',2,1,3,28,27,7],
+  ['Veteranos Alalpardo',2,1,3,23,29,7],
+  ['Deportivo La Excusa',1,0,5,15,31,3],
+  ['Grupo Archeos',0,0,6,9,31,0],
+  ['Tercer Tiempo',0,0,6,4,38,0],
 ];
 const US = 'Palinka CF';
 const RIVAL_CRESTS = {"Anbu FC": "assets/rivales/anbu-fc.webp", "Lyons FC": "assets/rivales/lyons-fc.webp", "Deportivo La Excusa": "assets/rivales/deportivo-la-excusa.webp", "Maias CEF": "assets/rivales/maias-cef.webp", "Kristal Palace": "assets/rivales/kristal-palace.webp", "Total 90 FC": "assets/rivales/total-90-fc.webp", "Tercer Tiempo": "assets/rivales/tercer-tiempo.webp", "Grupo Archeos": "assets/rivales/grupo-archeos.webp", "Veteranos Alalpardo": "assets/rivales/veteranos-alalpardo.webp", "UA Ajalvirgenes": "assets/rivales/ua-ajalvirgenes.webp", "Recreativo": "assets/rivales/recreativo.webp"};
@@ -657,7 +656,7 @@ const pts = n => TABLE.find(r=>r[0]===n)?.[6];
   document.getElementById('nx-when').innerHTML = `${DAYS[date.getDay()]} ${+d.slice(8)} ${MONTHS_L[+d.slice(5,7)-1].toLowerCase()} <span>· ${t} h</span>`;
   document.getElementById('nx-note').textContent = top
     ? 'Primero contra segundo, los dos invictos y con 15 puntos. Ellos llevan 39 goles a favor; nosotros solo hemos encajado 4.'
-    : `${esc(rival)} va ${pos(rival)}º con ${pts(rival)} puntos.`;
+    : `Llegamos líderes, con ${pts(US)} puntos y ${PLAYED.length} victorias de ${PLAYED.length}. ${rival} va ${pos(rival)}º con ${pts(rival)} puntos.`;
   const pad = n => String(n).padStart(2,'0');
   const els = ['d','h','m','s'].map(k=>document.getElementById('cd-'+k));
   function tick(){
@@ -677,8 +676,8 @@ const pts = n => TABLE.find(r=>r[0]===n)?.[6];
   const us = TABLE.find(r=>r[0]===US);
   const items = [
     [us[6],'Puntos',`${pos(US)}º en la tabla`],
-    [us[1],'Victorias','de 5 partidos'],
-    [us[4],'Goles a favor',`${(us[4]/5).toFixed(1).replace('.',',')} por partido`],
+    [us[1],'Victorias',`de ${PLAYED.length} partidos`],
+    [us[4],'Goles a favor',`${(us[4]/PLAYED.length).toFixed(1).replace('.',',')} por partido`],
     [us[5],'Goles en contra','Mejor defensa'],
   ];
   document.getElementById('stats').innerHTML = items.map(([v,l,s])=>
@@ -702,8 +701,8 @@ const pts = n => TABLE.find(r=>r[0]===n)?.[6];
 
 /* ---------- PLANTILLA ---------- */
 (function squad(){
-  document.getElementById('squad').innerHTML = PLAYERS.map(([n,f,l,pj,g,y,m],i)=>{
-    const b = [g?`<span class="bdg g">${g}</span>`:'', m?`<span class="bdg m">MVP ${m>1?'×'+m:''}</span>`:'', y?`<span class="bdg y">${y}</span>`:''].join('');
+  document.getElementById('squad').innerHTML = PLAYERS.map(([n,f,l,pj,g,y,m,rj],i)=>{
+    const b = [g?`<span class="bdg g">${g}</span>`:'', m?`<span class="bdg m">MVP ${m>1?'×'+m:''}</span>`:'', y?`<span class="bdg y">${y}</span>`:'', rj?`<span class="bdg r">${rj}</span>`:''].join('');
     return `<button class="card rv" aria-pressed="false" aria-label="${esc(f+' '+l)}, dorsal ${n}. Toca para ver estadísticas">
       <div class="inner">
         <div class="face front">
@@ -716,7 +715,7 @@ const pts = n => TABLE.find(r=>r[0]===n)?.[6];
           <h4>${esc(f)}<br><span style="color:var(--muted);font-size:.8rem;font-weight:800">${esc(l)}</span></h4>
           <div class="row"><span>Partidos</span><b>${pj}</b></div>
           <div class="row"><span>Goles</span><b>${g}</b></div>
-          <div class="row"><span>Amarillas</span><b>${y}</b></div>
+          <div class="row"><span>Tarjetas</span><b>${y}<small style="color:var(--yellow)"> A</small> ${rj}<small style="color:var(--red)"> R</small></b></div>
           <div class="row"><span>MVP</span><b style="${m?'color:var(--gold)':''}">${m}</b></div>
           <div class="foot"><img src="${CREST}" alt="">Dorsal ${n} · Palinka CF</div>
         </div>
