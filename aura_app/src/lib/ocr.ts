@@ -1,6 +1,7 @@
 // Lectura de tickets 100% en el dispositivo: Tesseract.js (Apache-2.0) con el modelo de español
 // autoalojado en /ocr, y un intérprete de tickets españoles (total, IVA, fecha, comercio, categoría).
 import type { Expense } from '../types'
+import { isNative } from './platform'
 
 export type ReceiptData = { comercio?: string; fecha?: string; total?: number; iva?: number; categoria?: Expense['category']; cif?: string; texto: string; confianza: number }
 
@@ -13,7 +14,8 @@ function getWorker(onProgress?: (p: number) => void) {
         workerPath: base + 'worker.min.js',
         corePath: base,
         langPath: base,
-        gzip: true,
+        // Android descomprime los .gz al empaquetar la app: allí el modelo va sin comprimir
+        gzip: !isNative,
         logger: (m: { status: string; progress: number }) => {
           if (m.status === 'recognizing text') progress?.(m.progress)
         },
