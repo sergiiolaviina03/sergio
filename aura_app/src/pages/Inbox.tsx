@@ -1,4 +1,4 @@
-import { Inbox, Check, X, Sparkles, Clock3, Table2, CheckCheck } from 'lucide-react'
+import { Inbox, Check, X, Sparkles, Clock3, Table2, CheckCheck, Receipt } from 'lucide-react'
 import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useStore } from '../store'
@@ -8,8 +8,10 @@ import { cap, dayKey, fmt, hm, parseDay } from '../lib/time'
 import { Avatar, Empty, PageHeader, Tabs, cx, toast } from '../components/ui'
 import { LABEL } from '../components/ClockFlow'
 import { endOfMonth } from 'date-fns'
+import { CATS, checkPolicy } from './Expenses'
+import { eur } from '../lib/payroll'
 
-type Item = { id: string; kind: 'leave' | 'correction' | 'period'; empId: string; createdAt: number; title: string; sub: string; advice: { ok: boolean; text: string }; approve: () => void; reject?: () => void }
+type Item = { id: string; kind: 'leave' | 'correction' | 'period' | 'expense'; thumb?: string; empId: string; createdAt: number; title: string; sub: string; advice: { ok: boolean; text: string }; approve: () => void; reject?: () => void }
 
 export function InboxPage() {
   const s = useStore()
@@ -62,6 +64,16 @@ export function InboxPage() {
         approve: () => s.decidePeriod(p.empId, p.month),
       }
     }),
+    ...s.expenses.filter((x) => ids.has(x.empId) && x.status === 'pending').map((x): Item => {
+      const flags = x.flags.length ? x.flags : checkPolicy(x, s.expenses.filter((y) => y.id !== x.id), x.empId)
+      return {
+        id: x.id, kind: 'expense', empId: x.empId, createdAt: x.createdAt, thumb: x.receipt,
+        title: `${CATS[x.category].emoji} Gasto · ${eur(x.amount)}`,
+        sub: `${x.merchant} · ${fmt(parseDay(x.date), 'd MMM')}${x.km ? ` · ${x.km} km` : ''}${x.note ? ` · «${x.note}»` : ''}`,
+        advice: { ok: !flags.length, text: flags.length ? flags.join(' · ') + '.' : 'Cumple la política de gastos. Se abonará en la próxima nómina.' },
+        approve: () => s.decideExpense(x.id, 'approved'), reject: () => s.decideExpense(x.id, 'rejected'),
+      }
+    }),
   ].sort((a, b) => b.createdAt - a.createdAt)
 
   const done = [
@@ -69,7 +81,7 @@ export function InboxPage() {
   ].slice(-10).reverse()
 
   const recommended = items.filter((i) => i.advice.ok)
-  const icon = (k: Item['kind']) => (k === 'leave' ? <Sparkles size={14} /> : k === 'correction' ? <Clock3 size={14} /> : <Table2 size={14} />)
+  const icon = (k: Item['kind']) => (k === 'leave' ? <Sparkles size={14} /> : k === 'correction' ? <Clock3 size={14} /> : k === 'expense' ? <Receipt size={14} /> : <Table2 size={14} />)
 
   return (
     <div>
@@ -97,6 +109,7 @@ export function InboxPage() {
                         <Sparkles size={12} className="mt-0.5 shrink-0" /> <span>{it.advice.text}</span>
                       </div>
                     </div>
+                    {it.thumb && <img src={it.thumb} alt="Ticket" className="h-16 w-12 rounded-lg object-cover border border-line self-center" />}
                     <div className="flex gap-2 self-center">
                       {it.reject && <button className="btn-outline" onClick={() => { it.reject!(); toast({ title: 'Solicitud rechazada', tone: 'warn' }) }}><X size={15} /> Rechazar</button>}
                       <button className="btn-primary" onClick={() => { it.approve(); toast({ title: 'Aprobado', body: `${e.name.split(' ')[0]} recibirá una notificación.` }) }}><Check size={15} /> Aprobar</button>

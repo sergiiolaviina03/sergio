@@ -11,6 +11,9 @@ import { annualNet, eur, payslip } from '../lib/payroll'
 import { verify } from '../lib/ledger'
 import { startClock, LABEL } from './ClockFlow'
 import { Avatar, cx, toast } from './ui'
+import { useSignFlow } from '../pages/Documents'
+import { canSpeak, speak } from '../lib/platform'
+import { Volume2 } from 'lucide-react'
 import { startOfMonth, startOfWeek, endOfWeek, endOfMonth } from 'date-fns'
 
 type Action = { label: string; run: () => void; primary?: boolean }
@@ -145,6 +148,26 @@ export function respond(intent: Intent): Omit<Msg, 'id' | 'role'> {
           { label: 'Ver hoja de horas', run: () => go('timesheet') },
         ],
       }
+    }
+    case 'docs': {
+      const pend = s.documents.filter((d) => d.requireSignature && d.audience.includes(me.id) && !d.signatures.some((x) => x.empId === me.id))
+      if (!pend.length) return { text: 'No tienes documentos pendientes de firma ✅', actions: [{ label: 'Ver mis documentos', run: () => go('documents') }] }
+      return {
+        text: `Tienes ${pend.length} documento${pend.length > 1 ? 's' : ''} por firmar:\n` + pend.map((d) => `• ${d.title}${d.mandatory ? ' (obligatorio)' : ''}${d.due ? ` · vence ${fmt(parseDay(d.due), 'd MMM')}` : ''}`).join('\n'),
+        actions: [{ label: 'Firmar ahora', primary: true, run: () => { useNav.getState().setCopilot(false); useSignFlow.getState().open(pend[0].id) } }, { label: 'Ver todos', run: () => go('documents') }],
+      }
+    }
+    case 'expense': {
+      if (intent.amount) {
+        const cat = /taxi|cabify|uber|tren|renfe|metro|bus|parking/.test((intent.merchant ?? '').toLowerCase()) ? 'transporte' : /comida|restaur|menu|cafe|bar/.test((intent.merchant ?? '').toLowerCase()) ? 'comida' : 'otros'
+        return {
+          text: `Registro un gasto de ${eur(intent.amount)}${intent.merchant ? ` en ${intent.merchant}` : ''} con fecha de hoy. Recuerda adjuntar el ticket desde Gastos si lo tienes.`,
+          actions: [{ label: 'Enviar a aprobación', primary: true, run: () => { useStore.getState().addExpense({ date: dayKey(new Date()), merchant: cap(intent.merchant ?? 'Gasto'), amount: intent.amount!, category: cat as 'otros', flags: ['Sin justificante adjunto'] }); toast({ title: 'Gasto registrado', tone: 'ai' }) } }, { label: 'Abrir gastos', run: () => go('expenses') }],
+        }
+      }
+      const mine = s.expenses.filter((x) => x.empId === me.id)
+      const pend = mine.filter((x) => x.status === 'pending' || x.status === 'approved').reduce((a, x) => a + x.amount, 0)
+      return { text: `Tienes ${eur(pend)} en gastos pendientes de reembolso. Para añadir uno, haz una foto al ticket en Gastos o dime «gasto de 12 € en taxi».`, actions: [{ label: 'Abrir gastos', run: () => go('expenses') }] }
     }
     case 'theme':
       s.setSettings({ theme: intent.value })
@@ -293,7 +316,7 @@ export function Copilot() {
                         <Sparkles size={13} />
                       </div>
                       <div>
-                        <Typed text={m.text} />
+                        <div className="flex items-start gap-1"><Typed text={m.text} />{canSpeak && <button onClick={() => speak(m.text)} className="mt-1 shrink-0 h-6 w-6 rounded-md grid place-items-center text-muted hover:text-brand hover:bg-sunken" aria-label="Escuchar"><Volume2 size={13} /></button>}</div>
                         {m.extra}
                         {m.actions && (
                           <div className="flex flex-wrap gap-1.5 mt-2.5">

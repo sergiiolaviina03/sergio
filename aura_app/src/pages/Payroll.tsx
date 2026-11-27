@@ -1,4 +1,4 @@
-import { Wallet, Printer, TrendingUp, Building2, Sparkles, Info } from 'lucide-react'
+import { Wallet, Download, TrendingUp, Building2, Sparkles, Info } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { endOfMonth, startOfMonth, subMonths } from 'date-fns'
@@ -6,8 +6,9 @@ import { useMe, useStore } from '../store'
 import { annualNet, companySSRate, eur, irpfRate, payslip, workerSSRate, type Line } from '../lib/payroll'
 import { byDay, rangeStats } from '../lib/attendance'
 import { cap, fmt, monthKey } from '../lib/time'
-import { AiNote, Avatar, PageHeader, Section, Tabs, cx } from '../components/ui'
-import { COMPANY } from '../data/seed'
+import { AiNote, Avatar, PageHeader, Section, Tabs, cx, toast } from '../components/ui'
+import { saveFile } from '../lib/platform'
+import { payslipPdf } from '../lib/pdf'
 import type { Employee } from '../types'
 
 export function PayrollPage() {
@@ -45,7 +46,10 @@ function MySlip() {
   const [sel, setSel] = useState(0)
   const month = months[sel]
   const ot = useOvertime(me, month)
-  const p = payslip(me, monthKey(month), { overtimeMin: ot })
+  const company = useStore((s) => s.company)
+  const expenses = useStore((s) => s.expenses)
+  const reimburse = sel === 0 ? expenses.filter((x) => x.empId === me.id && x.status === 'approved').reduce((a, x) => a + x.amount, 0) : 0
+  const p = payslip(me, monthKey(month), { overtimeMin: ot, reimburse })
   const prev = payslip(me, monthKey(months[sel + 1] ?? month), {})
   const segs = [
     { label: 'Neto', v: p.neto, c: '#6366f1' },
@@ -72,17 +76,17 @@ function MySlip() {
           <div className="flex-1 min-w-[200px]">
             <div className="text-xs text-muted uppercase tracking-wider">Recibo de salarios</div>
             <div className="text-xl font-semibold mt-1">{cap(fmt(month, 'MMMM yyyy'))}</div>
-            <div className="text-xs text-muted mt-1">{COMPANY.legal} · CIF {COMPANY.cif} · CCC {COMPANY.ccc}</div>
+            <div className="text-xs text-muted mt-1">{company.legal} · CIF {company.cif} · CCC {company.ccc}</div>
           </div>
           <div className="text-right">
             <div className="text-sm font-medium">{me.name}</div>
             <div className="text-xs text-muted">{me.role} · {me.contract === 'indefinido' ? 'Indefinido' : 'Temporal'} · {me.pagas} pagas</div>
-            <button onClick={() => window.print()} className="btn-outline h-8 mt-2 no-print"><Printer size={14} /> Descargar PDF</button>
+            <button onClick={async () => { const ok = await saveFile(`nomina-${monthKey(month)}.pdf`, payslipPdf(me, p, cap(fmt(month, 'MMMM yyyy')))); toast(ok ? { title: 'Nómina descargada' } : { title: 'No se pudo descargar', tone: 'warn' }) }} className="btn-outline h-8 mt-2"><Download size={14} /> Descargar PDF</button>
           </div>
         </div>
         <div className="p-6 grid md:grid-cols-2 gap-6">
-          <Lines title="Devengos" lines={p.devengos} total={p.bruto} />
-          <Lines title="Deducciones" lines={p.deducciones} total={p.bruto - p.neto} negative />
+          <Lines title="Devengos" lines={p.devengos} total={p.devengos.reduce((a, l) => a + l.amount, 0)} />
+          <Lines title="Deducciones" lines={p.deducciones} total={p.deducciones.reduce((a, l) => a + l.amount, 0)} negative />
         </div>
         <div className="mx-6 mb-6 rounded-2xl p-5 flex flex-wrap items-center gap-4 text-white" style={{ background: 'linear-gradient(120deg,#7c3aed,#6366f1 55%,#06b6d4)' }}>
           <div className="flex-1">

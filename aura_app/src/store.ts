@@ -1,7 +1,9 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import type { Correction, Employee, Notice, Period, Punch, PunchType, TimeOffRequest, Zone, Method } from './types'
-import { EMPLOYEES, ME_ID, ZONES, buildSeed, genRange } from './data/seed'
+import type { Correction, Employee, Notice, Period, Punch, PunchType, TimeOffRequest, Zone, Method, HRDocument, Signature, Expense, Shift } from './types'
+import { seedDocuments, seedExpenses } from './data/docs'
+import { sha256 } from './lib/sha256'
+import { EMPLOYEES, ME_ID, ZONES, buildSeed, genRange, COMPANY, type Company } from './data/seed'
 import { seal, sealChain } from './lib/ledger'
 import { uid } from './lib/rng'
 import { dayKey, monthKey, parseDay } from './lib/time'
@@ -15,6 +17,7 @@ export type Settings = {
   locationMode: 'real' | 'demo'
   demoSpot: string // zoneId | 'remote' | 'far'
   autoBreakReminder: boolean
+  arrivalReminder: boolean
 }
 
 export type PunchCtx = { lat?: number; lng?: number; acc?: number; zoneId?: string | null; dist?: number; remote?: boolean; method?: Method; selfie?: string; flags?: string[]; note?: string; ts?: number; empId?: string }
@@ -31,6 +34,20 @@ type State = {
   settings: Settings
   seededThrough: string
   tampered?: { id: string; original: Punch }
+  documents: HRDocument[]
+  shifts: Shift[]
+  setShifts: (fn: (s: Shift[]) => Shift[]) => void
+  company: Company
+  qrSecret: string
+  setCompany: (c: Partial<Company>) => void
+  upsertEmployee: (e: Employee) => void
+  removeEmployee: (id: string) => void
+  expenses: Expense[]
+  signDocument: (docId: string, sig: Omit<Signature, 'hash' | 'empId' | 'ts'>) => Signature
+  createDocument: (d: Omit<HRDocument, 'id' | 'hash' | 'signatures' | 'createdAt' | 'createdBy'>) => HRDocument
+  addExpense: (x: Omit<Expense, 'id' | 'status' | 'createdAt' | 'empId'>) => Expense
+  decideExpense: (id: string, status: Expense['status']) => void
+  deleteExpense: (id: string) => void
   punch: (type: PunchType, ctx?: PunchCtx) => Punch
   requestTimeOff: (r: Omit<TimeOffRequest, 'id' | 'status' | 'createdAt' | 'empId'> & { empId?: string }) => TimeOffRequest
   cancelRequest: (id: string) => void
@@ -57,7 +74,12 @@ const initial = () => {
     zones: ZONES,
     employees: EMPLOYEES,
     ...s,
-    settings: { theme: 'system', viewAs: 'manager', requireSelfie: false, strictGeofence: false, locationMode: 'demo', demoSpot: 'mad', autoBreakReminder: true } as Settings,
+    documents: seedDocuments(),
+    shifts: [] as Shift[],
+    company: { ...COMPANY },
+    qrSecret: Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join(''),
+    expenses: seedExpenses(),
+    settings: { theme: 'system', viewAs: 'manager', requireSelfie: false, strictGeofence: false, locationMode: 'real', demoSpot: 'mad', autoBreakReminder: true, arrivalReminder: true } as Settings,
     tampered: undefined,
   }
 }
@@ -138,13 +160,42 @@ export const useStore = create<State>()(
         const sealed = sealChain(all, punches.at(-1))
         set({ punches: [...punches, ...sealed], seededThrough: today, periods: ensurePeriods(get().periods, employees) })
       },
+      signDocument: (docId, sig) => {
+        const { meId, documents } = get()
+        const d = documents.find((x) => x.id === docId)!
+        const ts = Date.now()
+        const full: Signature = { ...sig, empId: meId, ts, hash: sha256(`${d.hash}|${meId}|${ts}|${sha256(sig.image)}`) }
+        set({ documents: documents.map((x) => (x.id === docId ? { ...x, signatures: [...x.signatures.filter((y) => y.empId !== meId), full] } : x)) })
+        return full
+      },
+      createDocument: (d) => {
+        const doc: HRDocument = { ...d, id: uid('d_'), createdAt: Date.now(), createdBy: get().meId, hash: sha256(d.title + '\n' + d.body), signatures: [] }
+        set({ documents: [doc, ...get().documents] })
+        return doc
+      },
+      addExpense: (x) => {
+        const e: Expense = { ...x, id: uid('x_'), empId: get().meId, status: 'pending', createdAt: Date.now() }
+        set({ expenses: [e, ...get().expenses] })
+        return e
+      },
+      decideExpense: (id, status) => set({ expenses: get().expenses.map((x) => (x.id === id ? { ...x, status } : x)) }),
+      deleteExpense: (id) => set({ expenses: get().expenses.filter((x) => x.id !== id) }),
+      setCompany: (c) => {
+        const company = { ...get().company, ...c }
+        Object.assign(COMPANY, company)
+        set({ company })
+      },
+      upsertEmployee: (e) => set({ employees: get().employees.some((x) => x.id === e.id) ? get().employees.map((x) => (x.id === e.id ? e : x)) : [...get().employees, e], periods: ensurePeriods(get().periods, [e]) }),
+      removeEmployee: (id) => set({ employees: get().employees.filter((e) => e.id !== id) }),
+      setShifts: (fn) => set({ shifts: fn(get().shifts) }),
       reset: () => set(initial()),
     }),
     {
-      name: 'aura-v1',
+      name: 'aura-v2',
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => ({ ...s, tampered: undefined }) as unknown as State,
       onRehydrateStorage: () => (s) => {
+        if (s?.company) Object.assign(COMPANY, s.company)
         if (s?.tampered) s.untamper()
       },
     },

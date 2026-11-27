@@ -77,7 +77,7 @@ export type Payslip = {
 
 const r2 = (n: number) => Math.round(n * 100) / 100
 
-export function payslip(emp: Employee, month: string, opts: { overtimeMin?: number; extraBonus?: number; salary?: number } = {}): Payslip {
+export function payslip(emp: Employee, month: string, opts: { overtimeMin?: number; extraBonus?: number; salary?: number; reimburse?: number } = {}): Payslip {
   const salary = opts.salary ?? emp.salary
   const m = Number(month.slice(5, 7))
   const monthly = salary / emp.pagas
@@ -93,6 +93,7 @@ export function payslip(emp: Employee, month: string, opts: { overtimeMin?: numb
   if (ot > 0) devengos.push({ concept: 'Horas extraordinarias', amount: otAmount, hint: `${(ot / 60).toFixed(1)} h × ${(hourly * 1.25).toFixed(2)} €` })
   if (opts.extraBonus) devengos.push({ concept: 'Bonus', amount: r2(opts.extraBonus) })
   devengos.push({ concept: 'Retribución flexible · ticket comida', amount: 0, hint: 'Exento hasta 11 €/día' })
+  const reimb = r2(opts.reimburse ?? 0)
 
   const bruto = r2(devengos.reduce((a, l) => a + l.amount, 0))
   const prorrata = emp.pagas === 14 ? (salary / 14) * 2 / 12 : 0
@@ -111,6 +112,7 @@ export function payslip(emp: Employee, month: string, opts: { overtimeMin?: numb
   if (otAmount) deducciones.push({ concept: 'Horas extra', base: otAmount, rate: w.horasExtra, amount: r2((otAmount * w.horasExtra) / 100) })
   deducciones.push({ concept: 'Retención IRPF', base: bruto, rate: irpf, amount: r2((bruto * irpf) / 100) })
   const totalDed = deducciones.reduce((a, l) => a + l.amount, 0)
+  if (reimb) devengos.push({ concept: 'Reembolso de gastos', amount: reimb, hint: 'Gastos aprobados · no cotiza ni tributa' })
 
   const c = SS_2026.company
   const cdes = emp.contract === 'temporal' ? c.desempleoTemp : c.desempleoIndef
@@ -123,7 +125,7 @@ export function payslip(emp: Employee, month: string, opts: { overtimeMin?: numb
     { concept: 'AT y EP', base: baseCP, rate: c.atep, amount: r2((baseCP * c.atep) / 100) },
   ]
   const ss = empresa.reduce((a, l) => a + l.amount, 0)
-  return { month, devengos, deducciones, empresa, bruto, neto: r2(bruto - totalDed), coste: r2(bruto + ss), baseCC, irpf, hourly }
+  return { month, devengos, deducciones, empresa, bruto, neto: r2(bruto + reimb - totalDed), coste: r2(bruto + ss), baseCC, irpf, hourly }
 }
 
 /** Neto anual aproximado para el simulador. */

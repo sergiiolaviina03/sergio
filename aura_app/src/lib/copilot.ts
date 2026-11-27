@@ -4,7 +4,7 @@ import type { PunchType } from '../types'
 import { addDays, startOfWeek } from 'date-fns'
 import { dayKey } from './time'
 
-export type Page = 'home' | 'clock' | 'timesheet' | 'timeoff' | 'payroll' | 'team' | 'inbox' | 'ledger' | 'settings' | 'kiosk'
+export type Page = 'home' | 'clock' | 'timesheet' | 'timeoff' | 'payroll' | 'documents' | 'expenses' | 'people' | 'shifts' | 'team' | 'inbox' | 'ledger' | 'settings' | 'kiosk'
 
 export type Intent =
   | { kind: 'clock'; type: PunchType }
@@ -18,7 +18,9 @@ export type Intent =
   | { kind: 'issues' }
   | { kind: 'theme'; value: 'dark' | 'light' }
   | { kind: 'verify' }
-  | { kind: 'leave_time'; }
+  | { kind: 'leave_time' }
+  | { kind: 'docs' }
+  | { kind: 'expense'; amount?: number; merchant?: string }
   | { kind: 'help' }
   | { kind: 'unknown' }
 
@@ -114,6 +116,12 @@ export function parse(raw: string, now = new Date()): Intent {
   if (has(t, 'modo oscuro', 'tema oscuro', 'dark')) return { kind: 'theme', value: 'dark' }
   if (has(t, 'modo claro', 'tema claro', 'light')) return { kind: 'theme', value: 'light' }
   if (has(t, 'verifica', 'integridad', 'auditor', 'inspeccion', 'sellad')) return { kind: 'verify' }
+  if (has(t, 'firmar', 'firma', 'documento', 'contrato', 'politica')) return { kind: 'docs' }
+  if (has(t, 'gasto', 'ticket', 'factura', 'reembols', 'kilometraje', 'dieta')) {
+    const m = t.match(/(\d+(?:[.,]\d{1,2})?)\s*(?:€|euros|eur)/)
+    const mer = t.match(/(?:en|de) ([a-z0-9 ]{3,30}?)(?: de| por| \d|$)/)
+    return { kind: 'expense', amount: m ? parseFloat(m[1].replace(',', '.')) : undefined, merchant: mer?.[1]?.trim() }
+  }
 
   // Ausencias: petición
   const leaveType = has(t, 'asunto', 'propio') ? 'own' : has(t, 'medico', 'cita', 'dentista') ? 'med' : has(t, 'baja', 'enferm', 'malo', 'mala') ? 'sick' : has(t, 'teletrabajo', 'desde casa', 'remoto') ? 'remote' : has(t, 'vacacion', 'libre', 'dia off', 'puente', 'fiesta') ? 'vac' : null
@@ -152,7 +160,7 @@ export function parse(raw: string, now = new Date()): Intent {
 
   const nav: [string[], Page][] = [
     [['inicio', 'home'], 'home'], [['jornada', 'reloj', 'mapa de fichaje'], 'clock'], [['hoja', 'registro horario', 'fichajes'], 'timesheet'],
-    [['ausencia', 'vacacion', 'calendario'], 'timeoff'], [['nomina'], 'payroll'], [['equipo', 'mapa'], 'team'], [['bandeja', 'aprobacion', 'aprobar'], 'inbox'],
+    [['ausencia', 'vacacion', 'calendario'], 'timeoff'], [['nomina'], 'payroll'], [['documento'], 'documents'], [['gasto'], 'expenses'], [['equipo', 'mapa'], 'team'], [['bandeja', 'aprobacion', 'aprobar'], 'inbox'],
     [['libro', 'registro sellado', 'cadena'], 'ledger'], [['ajuste', 'config', 'zona', 'geovalla'], 'settings'], [['quiosco', 'kiosko', 'tablet'], 'kiosk'],
   ]
   for (const [ws, p] of nav) if (has(t, ...ws)) return { kind: 'nav', page: p }
@@ -169,5 +177,7 @@ export const SUGGESTIONS = [
   '¿Tengo algo mal en mis fichajes?',
   '¿Cuánto cobraría con una subida de 3.000 €?',
   '¿Quién está teletrabajando?',
+  '¿Tengo documentos por firmar?',
+  'Gasto de 23,40 € en taxi',
   'Verifica la integridad del registro',
 ]

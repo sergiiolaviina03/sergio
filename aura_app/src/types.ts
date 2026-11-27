@@ -1,5 +1,5 @@
 export type PunchType = 'in' | 'out' | 'break_start' | 'break_end'
-export type Method = 'app' | 'kiosk' | 'copilot' | 'correction'
+export type Method = 'app' | 'kiosk' | 'copilot' | 'correction' | 'qr'
 
 export type Zone = { id: string; name: string; address: string; lat: number; lng: number; radius: number; color: string }
 
@@ -53,3 +53,41 @@ export type Correction = { id: string; empId: string; type: PunchType; ts: numbe
 export type Period = { empId: string; month: string; status: 'open' | 'submitted' | 'approved' }
 
 export type Notice = { id: string; ts: number; title: string; body?: string; read?: boolean; icon?: string }
+
+export type Signature = { empId: string; ts: number; image: string; hash: string; method: 'drawn' | 'typed'; readSeconds: number; device: string }
+export type DocCategory = 'contrato' | 'politica' | 'registro' | 'anexo' | 'otros'
+export type HRDocument = {
+  id: string
+  title: string
+  category: DocCategory
+  body: string // párrafos separados por \n\n; líneas que empiezan por "## " son títulos
+  mandatory: boolean
+  requireSignature: boolean
+  due?: string
+  audience: string[]
+  createdAt: number
+  createdBy: string
+  hash: string
+  attachment?: { name: string; size: number; hash: string }
+  signatures: Signature[]
+}
+
+export type ExpenseStatus = 'pending' | 'approved' | 'paid' | 'rejected'
+export type Expense = {
+  id: string
+  empId: string
+  date: string
+  merchant: string
+  amount: number
+  vat?: number
+  category: 'comida' | 'transporte' | 'alojamiento' | 'material' | 'software' | 'kilometraje' | 'otros'
+  note?: string
+  km?: number
+  receipt?: string // miniatura jpeg
+  status: ExpenseStatus
+  createdAt: number
+  ai?: boolean
+  flags: string[]
+}
+
+export type Shift = { id: string; empId: string; date: string; start: string; end: string; breakMin: number; zoneId: string; label?: string; published: boolean }

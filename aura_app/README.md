@@ -2,7 +2,7 @@
 
 App web (instalable como app en móvil y escritorio) para control horario con geolocalización, ausencias, nóminas y gestión de equipo. Diseño propio, limpio, con un copiloto que entiende español.
 
-Todo es software libre y gratuito: React, TypeScript, Tailwind, Framer Motion, Zustand, Leaflet + OpenStreetMap y Workbox (PWA). No hace falta ninguna API de pago ni clave.
+Todo es software libre y se ejecuta en el navegador: React, TypeScript, Tailwind, Framer Motion, Zustand, Leaflet + OpenStreetMap, jsPDF, Tesseract.js (OCR, con el modelo de español autoalojado en `public/ocr`), qrcode y Workbox (PWA). **No depende de ninguna API externa, IA de terceros ni clave**: se puede comercializar y alojar en cualquier servidor estático.
 
 ## Arrancar
 
@@ -31,17 +31,24 @@ Para probarlo en el móvil con GPS real hace falta HTTPS (o `localhost`). En la 
 | **Nóminas** | Recibo mensual con devengos, deducciones y coste empresa (tipos de cotización 2026, IRPF estimado, pagas extra, horas extra sacadas del fichaje), histórico, simulador de salario y coste del equipo. |
 | **Equipo en vivo** | Mapa con quién está en cada sede, en remoto, en pausa o ausente; aviso de quién no ha fichado. |
 | **Bandeja** | Aprobaciones de ausencias, correcciones y hojas de horas con recomendación automática y aprobación masiva de las seguras. |
-| **Copiloto** (`Ctrl K` o botón central en móvil) | Entiende frases como «ficha mi entrada», «¿a qué hora puedo irme?», «vacaciones del 22 al 26 de diciembre», «¿cuánto cobraría con 3.000 € más?», «¿quién está teletrabajando?». Admite dictado por voz. Funciona en el dispositivo, sin enviar datos fuera. |
+| **Documentos y firma** | Envío de documentos a firmar (con plantillas legales), lectura obligatoria hasta el final, resumen automático, firma manuscrita o tipográfica, sello SHA-256 por firma, PDF firmado con acta, seguimiento de quién falta y aviso bloqueante de documentos obligatorios. |
+| **Gastos** | Foto del ticket → OCR en el dispositivo (comercio, fecha, total, IVA, categoría), kilometraje a 0,26 €/km, política de gastos (límites, duplicados, sin justificante, fin de semana), aprobación y reembolso en la nómina. |
+| **Turnos** | Cuadrante semanal con arrastrar y soltar, plantillas (mañana, tarde, noche…), autocompletar desde el horario, copiar semana, cobertura por franjas, alertas de descanso de 12 h, descanso semanal, exceso de jornada y ausencias; al publicar pasa a ser la jornada prevista. |
+| **Personas** | Alta, edición y baja de plantilla (horario, teletrabajo, salario, PIN), organigrama por equipos y datos de la empresa (aparecen en nóminas y PDFs). |
+| **Fichaje por QR** | El quiosco muestra un QR que cambia cada 30 s; escanearlo con la cámara del móvil ficha en ese centro aunque no haya GPS. |
+| **Aviso de llegada** | Con la app abierta o instalada, al entrar en la geovalla a tu hora te propone fichar. |
+| **Copiloto** (`Ctrl K` o botón central en móvil) | Entiende frases como «ficha mi entrada», «¿a qué hora puedo irme?», «vacaciones del 22 al 26 de diciembre», «gasto de 23 € en taxi», «¿tengo documentos por firmar?». Dictado y lectura en voz alta con las funciones del navegador. Todo se procesa en el dispositivo. |
 | **Modo quiosco** | Pantalla para una tablet en la entrada de la oficina: fichaje con PIN. |
 | **Extras** | Modo oscuro, diseño adaptado a móvil, instalable (PWA) y funciona sin conexión. |
 
 ## Estado y siguientes pasos
 
-Esta versión guarda los datos en el navegador (`localStorage`) con una empresa ficticia de demostración, así que se puede usar y enseñar ya sin servidor. Para producción:
+Esta versión guarda los datos en el navegador (`localStorage`) con una empresa ficticia de demostración, así que se puede usar y enseñar ya sin servidor. Para venderla a empresas:
 
 1. **Backend y base de datos** (p. ej. Supabase o Postgres + API) con autenticación, multiempresa y permisos por rol. El sellado debe hacerse también en servidor, con sello de tiempo de confianza.
 2. **Nómina oficial**: tablas de bases por grupo de cotización, convenios, regularización de IRPF, ficheros SILTRA/RED y modelos 111/190. Los cálculos actuales son una estimación orientativa.
 3. **Normativa**: el reglamento del registro de jornada digital estaba pendiente de publicación en el BOE; revisar el texto final (acceso remoto de la Inspección, formatos de exportación) y adaptar.
-4. **Privacidad (RGPD)**: informar a la plantilla, base legal del tratamiento de la ubicación y la imagen, plazos de conservación (4 años para el registro de jornada).
+4. **Mapas**: las teselas de OpenStreetMap sirven para demos y uso ligero; para clientes, usar un proveedor de teselas contratado o autoalojar PMTiles (cambiar `TILE_URL` en `src/components/MapView.tsx`).
+5. **Privacidad (RGPD)**: informar a la plantilla, base legal del tratamiento de la ubicación y la imagen, plazos de conservación (4 años para el registro de jornada).
 
 Los festivos incluidos son los nacionales y de la Comunidad de Madrid (aproximados) para 2026–2027.

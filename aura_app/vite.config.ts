@@ -28,9 +28,11 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg}'],
+        globIgnores: ['ocr/**'],
         maximumFileSizeToCacheInBytes: 3_000_000,
         runtimeCaching: [
           { urlPattern: /^https:\/\/tile\.openstreetmap\.org\//, handler: 'CacheFirst', options: { cacheName: 'tiles', expiration: { maxEntries: 400, maxAgeSeconds: 60 * 60 * 24 * 14 } } },
+          { urlPattern: /\/ocr\//, handler: 'CacheFirst', options: { cacheName: 'ocr' } },
           { urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\//, handler: 'StaleWhileRevalidate', options: { cacheName: 'fonts' } },
         ],
       },

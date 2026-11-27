@@ -10,23 +10,24 @@ import { cx, toast } from './ui'
 import { short } from '../lib/ledger'
 import { fmt } from '../lib/time'
 import { fmtDist } from '../lib/geo'
+import { qrValid } from '../lib/qr'
 
 type Stage = 'idle' | 'locating' | 'checking' | 'selfie' | 'sealing' | 'done' | 'blocked' | 'error'
-type FlowState = { open: boolean; type: PunchType; stage: Stage; verdict?: Verdict; punch?: Punch; error?: string; via: 'app' | 'copilot' | 'kiosk'; empId?: string }
+type FlowState = { open: boolean; type: PunchType; stage: Stage; verdict?: Verdict; punch?: Punch; error?: string; via: 'app' | 'copilot' | 'kiosk' | 'qr'; empId?: string; qr?: { zoneId: string; token: string } }
 
 export const LABEL: Record<PunchType, string> = { in: 'Entrada', out: 'Salida', break_start: 'Inicio de pausa', break_end: 'Fin de pausa' }
 
-export const useClockFlow = create<FlowState & { start: (t: PunchType, via?: FlowState['via'], empId?: string) => void; close: () => void; set: (p: Partial<FlowState>) => void }>((set) => ({
+export const useClockFlow = create<FlowState & { start: (t: PunchType, via?: FlowState['via'], empId?: string, qr?: FlowState['qr']) => void; close: () => void; set: (p: Partial<FlowState>) => void }>((set) => ({
   open: false,
   type: 'in',
   stage: 'idle',
   via: 'app',
-  start: (type, via = 'app', empId) => set({ open: true, type, stage: 'locating', verdict: undefined, punch: undefined, error: undefined, via, empId }),
+  start: (type, via = 'app', empId, qr) => set({ open: true, type, stage: 'locating', verdict: undefined, punch: undefined, error: undefined, via, empId, qr }),
   close: () => set({ open: false, stage: 'idle' }),
   set: (p) => set(p),
 }))
 
-export const startClock = (t: PunchType, via?: FlowState['via'], empId?: string) => useClockFlow.getState().start(t, via, empId)
+export const startClock = (t: PunchType, via?: FlowState['via'], empId?: string, qr?: FlowState['qr']) => useClockFlow.getState().start(t, via, empId, qr)
 
 export function ClockFlow() {
   const f = useClockFlow()
@@ -39,6 +40,21 @@ export function ClockFlow() {
     ;(async () => {
       const s = useStore.getState()
       const emp = s.employees.find((e) => e.id === (f.empId ?? s.meId))!
+      if (f.qr) {
+        const zone = s.zones.find((z) => z.id === f.qr!.zoneId)
+        const ok = !!zone && qrValid(s.qrSecret, f.qr.zoneId, f.qr.token)
+        const v: Verdict = { inside: ok, remote: false, zone: ok ? zone : undefined, dist: 0, flags: ok ? [] : ['qr_caducado'], blocked: !ok, score: ok ? 100 : 10, checks: [ok ? { id: 'qr', label: 'Código QR', status: 'ok', detail: `Escaneado en el quiosco de ${zone!.name} · válido 30 s` } : { id: 'qr', label: 'Código QR', status: 'fail', detail: 'El código ha caducado o no es de esta empresa. Escanéalo de nuevo.' }] }
+        f.set({ stage: 'checking', verdict: v })
+        await wait(900)
+        if (!ok) {
+          f.set({ stage: 'blocked' })
+          running.current = false
+          return
+        }
+        seal(v)
+        running.current = false
+        return
+      }
       let fix
       try {
         fix = await locate(s.settings, s.zones, emp)
@@ -74,10 +90,10 @@ export function ClockFlow() {
       lat: v.fix ? +v.fix.lat.toFixed(6) : undefined,
       lng: v.fix ? +v.fix.lng.toFixed(6) : undefined,
       acc: v.fix ? Math.round(v.fix.acc) : undefined,
-      zoneId: v.fix ? (v.zone?.id ?? null) : undefined,
+      zoneId: v.zone?.id ?? (v.fix ? null : undefined),
       dist: v.dist ? Math.round(v.dist) : undefined,
       remote: v.remote,
-      method: st.via === 'copilot' ? 'copilot' : st.via === 'kiosk' ? 'kiosk' : 'app',
+      method: st.via === 'copilot' ? 'copilot' : st.via === 'kiosk' ? 'kiosk' : st.via === 'qr' ? 'qr' : 'app',
       selfie,
       flags: [...v.flags, ...(v.fix?.simulated ? ['demo'] : []), ...(selfie === undefined && useStore.getState().settings.requireSelfie && st.via !== 'kiosk' ? ['sin_selfie'] : [])],
     })
@@ -90,6 +106,13 @@ export function ClockFlow() {
       toast({ title: `${LABEL[p.type]} registrada · ${fmt(p.ts, 'HH:mm')}`, body: `${emp.name.split(' ')[0]} · ${v.zone ? v.zone.name : v.remote ? 'Teletrabajo' : 'Fuera de zona'} · sello ${short(p.hash)}`, tone: v.flags.length ? 'warn' : 'ok' })
     }
   }
+
+  useEffect(() => {
+    if (!f.open) return
+    const k = (e: KeyboardEvent) => e.key === 'Escape' && f.close()
+    window.addEventListener('keydown', k)
+    return () => window.removeEventListener('keydown', k)
+  }, [f.open]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const v = f.verdict
   const zones = store.zones
@@ -124,7 +147,7 @@ export function ClockFlow() {
               </button>
             </div>
             <div className="px-5 pb-5 -mt-4 relative z-[600]">
-              <div className="text-xs font-medium text-muted uppercase tracking-wider">{LABEL[f.type]}{f.via === 'kiosk' ? ' · quiosco' : f.via === 'copilot' ? ' · copiloto' : ''}</div>
+              <div className="text-xs font-medium text-muted uppercase tracking-wider">{LABEL[f.type]}{f.via === 'kiosk' ? ' · quiosco' : f.via === 'copilot' ? ' · copiloto' : f.via === 'qr' ? ' · QR' : ''}</div>
               <div className="text-lg font-semibold mt-0.5">
                 {f.stage === 'locating' && 'Localizando…'}
                 {f.stage === 'checking' && 'Verificando fichaje…'}
@@ -138,7 +161,7 @@ export function ClockFlow() {
                     {LABEL[f.type]} a las {fmt(f.punch!.ts, 'HH:mm:ss')}
                   </span>
                 )}
-                {f.stage === 'blocked' && 'Fichaje bloqueado por geovalla'}
+                {f.stage === 'blocked' && (f.qr ? 'Código QR no válido' : 'Fichaje bloqueado por geovalla')}
               </div>
               {f.error && <div className="text-xs text-warn mt-1">{f.error}. Puedes activar el modo demo en Ajustes.</div>}
 

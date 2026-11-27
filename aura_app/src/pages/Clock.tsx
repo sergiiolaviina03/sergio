@@ -7,7 +7,7 @@ import { MapView } from '../components/MapView'
 import { AiNote, PageHeader, Section, cx } from '../components/ui'
 import { LABEL } from '../components/ClockFlow'
 import { evaluate, locate, type Verdict } from '../lib/verify'
-import { fmt, hm, isoDow } from '../lib/time'
+import { cap, dayKey, fmt, hm, isoDow } from '../lib/time'
 import { short } from '../lib/ledger'
 import { plannedMin } from '../lib/attendance'
 import { go } from '../lib/nav'
@@ -67,6 +67,23 @@ export function ClockPage() {
               <div><div className="text-xs text-muted">Restante</div><div className="font-semibold tabular-nums">{hm(Math.max(0, planned - today.worked))}</div></div>
             </div>
           </section>
+          {(() => {
+            const next = s.shifts.filter((x) => x.empId === me.id && x.published && x.date >= dayKey(now)).sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start)).slice(0, 5)
+            return next.length ? (
+              <Section title="Mis próximos turnos">
+                <div className="space-y-2">
+                  {next.map((x) => (
+                    <div key={x.id} className="flex items-center gap-3 text-sm">
+                      <span className="w-16 text-muted">{cap(fmt(new Date(x.date + 'T12:00'), 'EEE d'))}</span>
+                      <span className="h-2 w-2 rounded-full" style={{ background: s.zones.find((z) => z.id === x.zoneId)?.color }} />
+                      <span className="font-medium tabular-nums">{x.start}–{x.end}</span>
+                      <span className="text-muted truncate">{x.label ?? s.zones.find((z) => z.id === x.zoneId)?.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </Section>
+            ) : null
+          })()}
           {today.state === 'working' && today.worked > 5.5 * 60 && today.breaks < 15 && s.settings.autoBreakReminder && (
             <AiNote>Llevas más de 5 h 30 m sin pausa. A partir de 6 h la ley exige un descanso de 15 min: ¿te paras un momento? ☕</AiNote>
           )}

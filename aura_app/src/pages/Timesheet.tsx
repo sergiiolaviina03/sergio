@@ -1,4 +1,4 @@
-import { Table2, ChevronLeft, ChevronRight, Download, Send, ChevronDown, Wand2, CheckCircle2, Clock3 } from 'lucide-react'
+import { Table2, ChevronLeft, ChevronRight, Download, FileDown, Send, ChevronDown, Wand2, CheckCircle2, Clock3 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { addMonths, endOfMonth, startOfMonth, subMonths } from 'date-fns'
@@ -10,6 +10,8 @@ import { AiNote, Avatar, PageHeader, Section, Stat, cx, toast } from '../compone
 import { DayBar } from '../components/ClockOrb'
 import { LABEL } from '../components/ClockFlow'
 import { useNow } from '../lib/hooks'
+import { saveFile } from '../lib/platform'
+import { timesheetPdf } from '../lib/pdf'
 
 export function TimesheetPage() {
   const s = useStore()
@@ -35,14 +37,16 @@ export function TimesheetPage() {
     return { d, k, sm, p, hol: HOLIDAYS[k], off: absenceOn(emp.id, k, s.requests), future: d.getTime() > now, issue: issues.filter((i) => i.day === k) }
   })
 
-  const exportCsv = () => {
+  const exportPdf = async () => {
+    const blob = timesheetPdf(emp, cap(fmt(month, 'MMMM yyyy')), rows.filter((r) => !r.future && (r.p || r.sm.punches.length)).map((r) => ({ k: r.k, punches: r.sm.punches, planned: r.p })), (id) => (id ? s.zones.find((z) => z.id === id)?.name.split(' · ')[0] ?? '' : id === null ? 'Remoto/fuera' : '—'))
+    const ok = await saveFile(`registro-jornada-${emp.name.replace(/\s/g, '_')}-${mk}.pdf`, blob)
+    toast(ok ? { title: 'Registro de jornada en PDF descargado' } : { title: 'No se pudo descargar', tone: 'warn' })
+  }
+  const exportCsv = async () => {
     const head = ['Fecha', 'Empleado', 'Tipo', 'Hora', 'Centro', 'Lat', 'Lng', 'Precisión (m)', 'Método', 'Incidencias', 'Seq', 'Sello SHA-256']
     const lines = rows.flatMap((r) => r.sm.punches.map((p) => [r.k, emp.name, LABEL[p.type], fmt(p.ts, 'HH:mm:ss'), p.zoneId ? s.zones.find((z) => z.id === p.zoneId)?.name : p.remote ? 'Teletrabajo' : 'Fuera de zona', p.lat ?? '', p.lng ?? '', p.acc ?? '', p.method, p.flags.join(' '), p.seq, p.hash]))
     const csv = [head, ...lines].map((l) => l.map((x) => `"${String(x).replace(/"/g, '""')}"`).join(';')).join('\n')
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv' }))
-    a.download = `registro-jornada-${emp.name.replace(/\s/g, '_')}-${mk}.csv`
-    a.click()
+    await saveFile(`registro-jornada-${emp.name.replace(/\s/g, '_')}-${mk}.csv`, '\ufeff' + csv, 'text/csv')
     toast({ title: 'Registro exportado', body: 'CSV con sellos verificables, listo para la Inspección de Trabajo.' })
   }
 
@@ -71,7 +75,8 @@ export function TimesheetPage() {
               <button className="btn-outline rounded-none border-x-0" onClick={() => setMonth(startOfMonth(new Date()))}>Hoy</button>
               <button className="btn-outline rounded-l-none px-2.5" onClick={() => setMonth(addMonths(month, 1))} aria-label="Mes siguiente"><ChevronRight size={16} /></button>
             </div>
-            <button className="btn-outline" onClick={exportCsv}><Download size={15} /> Exportar</button>
+            <button className="btn-outline" onClick={exportPdf}><FileDown size={15} /> PDF</button>
+            <button className="btn-outline" onClick={exportCsv}><Download size={15} /> CSV</button>
             {isMe && period?.status === 'open' && <button className="btn-primary" onClick={() => { s.submitPeriod(mk); toast({ title: 'Hoja enviada a tu responsable' }) }}><Send size={15} /> Enviar</button>}
             {!isMe && manager && period?.status === 'submitted' && <button className="btn-brand" onClick={() => { s.decidePeriod(empId, mk); toast({ title: 'Hoja aprobada' }) }}><CheckCircle2 size={15} /> Aprobar</button>}
           </>

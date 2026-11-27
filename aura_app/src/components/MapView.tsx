@@ -5,14 +5,16 @@ import { useEffect } from 'react'
 import type { Zone } from '../types'
 import { useDark } from '../lib/hooks'
 
-// Teselas libres de OpenStreetMap (sin API key). El estilo «limpio» se consigue con filtros CSS (ver index.css).
+// Teselas de OpenStreetMap. Para uso comercial intensivo, sustituir la URL por un proveedor
+// propio (p. ej. PMTiles/Protomaps autoalojado o un servicio de teselas contratado).
+export const TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
 export function Tiles() {
   const dark = useDark()
   return (
     <TileLayer
       className={dark ? 'tiles-dark' : 'tiles-light'}
       key={dark ? 'd' : 'l'}
-      url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+      url={TILE_URL}
       attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
       maxZoom={19}
     />

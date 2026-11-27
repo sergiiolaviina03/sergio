@@ -22,7 +22,8 @@ export function ClockOrb({ size = 248, compact }: { size?: number; compact?: boo
   const color = state === 'working' ? '#6366f1' : state === 'break' ? '#f59e0b' : state === 'done' ? '#10b981' : '#a1a1b5'
   const main =
     state === 'working' ? { t: 'out' as const, label: 'Fichar salida', icon: <LogOut size={16} /> } : state === 'break' ? { t: 'break_end' as const, label: 'Volver', icon: <Play size={16} /> } : { t: 'in' as const, label: state === 'done' ? 'Volver a entrar' : 'Fichar entrada', icon: <LogIn size={16} /> }
-  const leaveAt = today.state === 'working' ? now + Math.max(0, planned - today.worked) * 60000 : undefined
+  const breakLeft = Math.max(0, me.breakMin - today.breaks)
+  const leaveAt = today.state === 'working' ? now + (Math.max(0, planned - today.worked) + (planned - today.worked > 60 ? breakLeft : 0)) * 60000 : undefined
 
   return (
     <div className="flex flex-col items-center">
@@ -44,7 +45,7 @@ export function ClockOrb({ size = 248, compact }: { size?: number; compact?: boo
             fill="none"
             stroke={state === 'break' ? '#f59e0b' : over ? '#10b981' : 'url(#orb)'}
             strokeWidth={10}
-            strokeLinecap="round"
+            strokeLinecap={pct > 0.005 ? 'round' : 'butt'}
             strokeDasharray={C}
             animate={{ strokeDashoffset: C * (1 - pct) }}
             transition={{ type: 'spring', stiffness: 60, damping: 20 }}

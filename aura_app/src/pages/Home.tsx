@@ -12,6 +12,8 @@ import { go, useNav } from '../lib/nav'
 import { HOLIDAYS, TIME_OFF_TYPES } from '../data/seed'
 import { eur, payslip } from '../lib/payroll'
 import { useInboxCount } from '../components/Layout'
+import { usePendingDocs, useSignFlow, dueLabel } from './Documents'
+import { FileSignature } from 'lucide-react'
 
 export function HomePage() {
   const me = useMe()
@@ -25,6 +27,8 @@ export function HomePage() {
   const week = rangeStats(me, days, s.requests, startOfWeek(d, { weekStartsOn: 1 }), d, now)
   const month = rangeStats(me, days, s.requests, startOfMonth(d), d, now)
   const inbox = useInboxCount()
+  const docs = usePendingDocs()
+  const openSign = useSignFlow((x) => x.open)
   const today = summarize(days.get(dayKey(d)) ?? [], now)
   const vac = timeOffUsage(me.id, s.requests, d.getFullYear()).vac
   const slip = payslip(me, monthKey(d), { overtimeMin: Math.max(0, month.overtime - 60) })
@@ -39,9 +43,10 @@ export function HomePage() {
     else if (today.state === 'done') parts.push(`Jornada cerrada con ${hm(today.worked)}.`)
     if (Math.abs(week.balance) > 30) parts.push(`Esta semana vas ${hm(week.balance, true)} respecto a lo previsto.`)
     if (issues.some((i) => i.severity === 'high')) parts.push(`Tienes ${issues.filter((i) => i.severity === 'high').length} fichaje incompleto que puedo arreglar.`)
+    if (docs.some((x) => x.mandatory)) parts.push(`Tienes ${docs.filter((x) => x.mandatory).length} documento${docs.filter((x) => x.mandatory).length > 1 ? 's' : ''} obligatorio${docs.filter((x) => x.mandatory).length > 1 ? 's' : ''} por firmar.`)
     if (inbox) parts.push(`${inbox} solicitud${inbox > 1 ? 'es' : ''} de tu equipo espera${inbox > 1 ? 'n' : ''} tu respuesta.`)
     return parts.join(' ')
-  }, [today.state, Math.floor(today.worked / 5), issues.length, inbox]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [today.state, Math.floor(today.worked / 5), issues.length, inbox, docs.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Equipo hoy
   const team = s.employees.filter((e) => e.id !== me.id)
@@ -119,6 +124,16 @@ export function HomePage() {
 
           <Section title="Requiere tu atención" icon={<Sparkles size={15} />}>
             <div className="space-y-2">
+              {docs.map((d) => (
+                <button key={d.id} onClick={() => openSign(d.id)} className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-sunken text-left transition">
+                  <span className={cx('h-8 w-8 rounded-lg grid place-items-center shrink-0', d.mandatory ? 'bg-bad/10 text-bad' : 'bg-brand/10 text-brand')}><FileSignature size={15} /></span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium">Firmar: {d.title}</div>
+                    <div className="text-xs text-muted truncate">{d.mandatory ? 'Obligatorio' : 'Opcional'}{d.due ? ` · ${dueLabel(d.due)!.t.toLowerCase()}` : ''}</div>
+                  </div>
+                  <ArrowRight size={14} className="text-muted" />
+                </button>
+              ))}
               {issues.slice(0, 3).map((i) => (
                 <button key={i.day + i.kind} onClick={() => go('timesheet')} className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-sunken text-left transition">
                   <span className={cx('h-8 w-8 rounded-lg grid place-items-center shrink-0', i.severity === 'high' ? 'bg-bad/10 text-bad' : 'bg-warn/10 text-warn')}><TriangleAlert size={15} /></span>
@@ -136,7 +151,7 @@ export function HomePage() {
                   <ArrowRight size={14} className="text-muted" />
                 </button>
               )}
-              {!issues.length && !inbox && <div className="text-sm text-muted py-2">Nada pendiente. Todo en orden ✨</div>}
+              {!issues.length && !inbox && !docs.length && <div className="text-sm text-muted py-2">Nada pendiente. Todo en orden ✨</div>}
             </div>
           </Section>
         </div>

@@ -1,5 +1,5 @@
 import logo from '../assets/aura.svg'
-import { Home, Timer, CalendarDays, Wallet, Users, Inbox, ShieldCheck, Settings, Sparkles, Table2, MonitorSmartphone, Moon, Sun, Menu, Bell } from 'lucide-react'
+import { FileSignature, Receipt, Users2, CalendarRange, Home, Timer, CalendarDays, Wallet, Users, Inbox, ShieldCheck, Settings, Sparkles, Table2, MonitorSmartphone, Moon, Sun, Menu, Bell } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNav } from '../lib/nav'
@@ -8,15 +8,15 @@ import { useMe, useStore } from '../store'
 import { Avatar, cx } from './ui'
 import { useDark, useToday } from '../lib/hooks'
 import { clock, fmt } from '../lib/time'
-import { COMPANY } from '../data/seed'
+import { usePendingDocs } from '../pages/Documents'
 
-type Item = { id: Page; label: string; icon: ReactNode; badge?: number; manager?: boolean }
+type Item = { id: Page; label: string; icon: ReactNode; badge?: number; manager?: boolean; alert?: boolean }
 
 export function useInboxCount() {
   const s = useStore()
   if (s.settings.viewAs !== 'manager') return 0
   const team = new Set(s.employees.filter((e) => e.managerId === s.meId).map((e) => e.id))
-  return s.requests.filter((r) => r.status === 'pending' && team.has(r.empId)).length + s.corrections.filter((c) => c.status === 'pending' && team.has(c.empId)).length + s.periods.filter((p) => p.status === 'submitted' && team.has(p.empId)).length
+  return s.requests.filter((r) => r.status === 'pending' && team.has(r.empId)).length + s.expenses.filter((x) => x.status === 'pending' && team.has(x.empId)).length + s.corrections.filter((c) => c.status === 'pending' && team.has(c.empId)).length + s.periods.filter((p) => p.status === 'submitted' && team.has(p.empId)).length
 }
 
 export function Layout({ children }: { children: ReactNode }) {
@@ -25,7 +25,9 @@ export function Layout({ children }: { children: ReactNode }) {
   const settings = useStore((s) => s.settings)
   const setSettings = useStore((s) => s.setSettings)
   const notices = useStore((s) => s.notices)
+  const companyName = useStore((s) => s.company.name)
   const inbox = useInboxCount()
+  const pendingDocs = usePendingDocs().length
   const dark = useDark()
   const [mobileMenu, setMobileMenu] = useState(false)
   const [bell, setBell] = useState(false)
@@ -34,8 +36,8 @@ export function Layout({ children }: { children: ReactNode }) {
 
   const groups: { title?: string; items: Item[] }[] = [
     { items: [{ id: 'home', label: 'Inicio', icon: <Home size={17} /> }, { id: 'inbox', label: 'Bandeja', icon: <Inbox size={17} />, badge: inbox, manager: true }] },
-    { title: 'Personal', items: [{ id: 'clock', label: 'Mi jornada', icon: <Timer size={17} /> }, { id: 'timesheet', label: 'Hoja de horas', icon: <Table2 size={17} /> }, { id: 'timeoff', label: 'Ausencias', icon: <CalendarDays size={17} /> }, { id: 'payroll', label: 'Nóminas', icon: <Wallet size={17} /> }] },
-    { title: 'Empresa', items: [{ id: 'team', label: 'Equipo en vivo', icon: <Users size={17} />, manager: true }, { id: 'ledger', label: 'Registro sellado', icon: <ShieldCheck size={17} /> }] },
+    { title: 'Personal', items: [{ id: 'clock', label: 'Mi jornada', icon: <Timer size={17} /> }, { id: 'timesheet', label: 'Hoja de horas', icon: <Table2 size={17} /> }, { id: 'timeoff', label: 'Ausencias', icon: <CalendarDays size={17} /> }, { id: 'payroll', label: 'Nóminas', icon: <Wallet size={17} /> }, { id: 'documents', label: 'Documentos', icon: <FileSignature size={17} />, badge: pendingDocs, alert: true }, { id: 'expenses', label: 'Gastos', icon: <Receipt size={17} /> }] },
+    { title: 'Empresa', items: [{ id: 'team', label: 'Equipo en vivo', icon: <Users size={17} />, manager: true }, { id: 'people', label: 'Personas', icon: <Users2 size={17} />, manager: true }, { id: 'shifts', label: 'Turnos', icon: <CalendarRange size={17} />, manager: true }, { id: 'ledger', label: 'Registro sellado', icon: <ShieldCheck size={17} /> }] },
     { title: 'Más', items: [{ id: 'kiosk', label: 'Modo quiosco', icon: <MonitorSmartphone size={17} />, manager: true }, { id: 'settings', label: 'Ajustes', icon: <Settings size={17} /> }] },
   ]
 
@@ -60,7 +62,7 @@ export function Layout({ children }: { children: ReactNode }) {
                   {page === it.id && <motion.span layoutId="navpill" className="absolute inset-0 rounded-xl bg-surface border border-line shadow-card" transition={{ type: 'spring', stiffness: 500, damping: 40 }} />}
                   <span className={cx('relative', page === it.id && 'text-brand')}>{it.icon}</span>
                   <span className="relative flex-1 text-left">{it.label}</span>
-                  {!!it.badge && <span className="relative chip bg-brand text-white min-w-[20px] justify-center">{it.badge}</span>}
+                  {!!it.badge && <span className={cx('relative chip text-white min-w-[20px] justify-center', it.alert ? 'bg-bad' : 'bg-brand')}>{it.badge}</span>}
                 </button>
               ))}
             </div>
@@ -80,7 +82,7 @@ export function Layout({ children }: { children: ReactNode }) {
           <img src={logo} className="h-8 w-8" alt="" />
           <div className="leading-tight">
             <div className="font-semibold tracking-tight">Aura</div>
-            <div className="text-[11px] text-muted">{COMPANY.name}</div>
+            <div className="text-[11px] text-muted">{companyName}</div>
           </div>
           <button onClick={() => setBell(!bell)} className="ml-auto relative h-8 w-8 rounded-lg hover:bg-sunken grid place-items-center text-muted" aria-label="Notificaciones">
             <Bell size={16} />

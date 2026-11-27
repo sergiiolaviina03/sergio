@@ -69,12 +69,13 @@ export function SettingsPage() {
                 <p className="text-xs text-muted mt-2">Útil para probar la app desde cualquier sitio.</p>
               </div>
             ) : (
-              <p className="text-xs text-muted mt-3">Usa el GPS de tu dispositivo. El navegador pedirá permiso (requiere HTTPS o localhost).</p>
+              <p className="text-xs text-muted mt-3">Usa el GPS de tu dispositivo: el navegador pide permiso la primera vez que fichas. Si no hay señal, el fichaje se guarda marcado «sin ubicación» para revisión, o puedes fichar escaneando el QR del quiosco.</p>
             )}
           </Section>
           <Section title="Políticas de fichaje" icon={<ShieldCheck size={15} />}>
             <Toggle on={s.settings.strictGeofence} onChange={(v) => s.setSettings({ strictGeofence: v })} label="Geovalla estricta" hint="Bloquea fichajes fuera de un centro salvo teletrabajo previsto. Si está desactivada, se permiten y se marcan para revisión." />
             <Toggle on={s.settings.requireSelfie} onChange={(v) => s.setSettings({ requireSelfie: v })} label="Selfie al fichar" hint="Evita fichajes por otra persona. La foto se guarda en miniatura y su huella entra en el sello." />
+            <Toggle on={s.settings.arrivalReminder} onChange={(v) => { s.setSettings({ arrivalReminder: v }); if (v && 'Notification' in window && Notification.permission === 'default') Notification.requestPermission() }} label="Aviso al llegar a la oficina" hint="Con la app abierta o instalada, te propone fichar al entrar en la geovalla de tu centro a tu hora de entrada." />
             <Toggle on={s.settings.autoBreakReminder} onChange={(v) => s.setSettings({ autoBreakReminder: v })} label="Recordatorio de pausa" hint="Avisa antes de superar 6 h seguidas sin descanso (art. 34.4 ET)." />
           </Section>
           <Section title="Apariencia" icon={<Palette size={15} />}>

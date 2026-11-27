@@ -1,5 +1,7 @@
 import logo from '../assets/aura.svg'
-import { Delete, LogOut, X, Coffee, LogIn, Play } from 'lucide-react'
+import { Delete, LogOut, X, Coffee, LogIn, Play, QrCode, KeyRound } from 'lucide-react'
+import QRCode from 'qrcode'
+import { QR_WINDOW, qrUrl } from '../lib/qr'
 import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useStore } from '../store'
@@ -17,8 +19,15 @@ export function KioskPage() {
   const [pin, setPin] = useState('')
   const [emp, setEmp] = useState<Employee>()
   const [err, setErr] = useState(false)
+  const [mode, setMode] = useState<'pin' | 'qr'>('pin')
+  const [qrImg, setQrImg] = useState('')
   const flowOpen = useClockFlow((f) => f.open)
   const zone = s.zones.find((z) => z.id === s.settings.demoSpot) ?? s.zones[0]
+  const win = Math.floor(now / QR_WINDOW)
+  useEffect(() => {
+    if (mode !== 'qr') return
+    QRCode.toDataURL(qrUrl(s.qrSecret, zone.id), { margin: 1, width: 560, color: { dark: '#0b0b14', light: '#ffffff' }, errorCorrectionLevel: 'M' }).then(setQrImg)
+  }, [mode, win, zone.id, s.qrSecret])
 
   useEffect(() => {
     if (pin.length < 4) return
@@ -59,17 +68,29 @@ export function KioskPage() {
       <header className="relative flex items-center gap-3 p-6">
         <img src={logo} className="h-9 w-9" alt="" />
         <div className="leading-tight"><div className="font-semibold">Aura · Quiosco</div><div className="text-xs text-white/50">{zone.name}</div></div>
-        <button onClick={() => go('home')} className="ml-auto h-9 px-3 rounded-xl bg-white/5 hover:bg-white/10 text-sm flex items-center gap-2"><X size={15} /> Salir</button>
+        <div className="ml-auto flex p-1 rounded-xl bg-white/5 gap-1">
+          <button onClick={() => setMode('pin')} className={`h-8 px-3 rounded-lg text-sm flex items-center gap-1.5 ${mode === 'pin' ? 'bg-white/15' : 'text-white/60'}`}><KeyRound size={14} /> PIN</button>
+          <button onClick={() => setMode('qr')} className={`h-8 px-3 rounded-lg text-sm flex items-center gap-1.5 ${mode === 'qr' ? 'bg-white/15' : 'text-white/60'}`}><QrCode size={14} /> QR</button>
+        </div>
+        <button onClick={() => go('home')} className="h-9 px-3 rounded-xl bg-white/5 hover:bg-white/10 text-sm flex items-center gap-2"><X size={15} /> Salir</button>
       </header>
       <div className="relative flex-1 grid lg:grid-cols-2 items-center gap-10 px-6 pb-10 max-w-6xl mx-auto w-full">
         <div className="text-center lg:text-left">
           <div className="text-white/50 text-lg">{cap(fmt(now, "EEEE, d 'de' MMMM"))}</div>
           <div className="text-[88px] sm:text-[120px] font-semibold tabular-nums tracking-tighter leading-none mt-2">{fmt(now, 'HH:mm')}<span className="text-white/30 text-5xl sm:text-6xl">{fmt(now, ':ss')}</span></div>
-          <div className="text-white/50 mt-4">Introduce tu PIN para fichar · demo: 2222, 3333, 7777…</div>
+          <div className="text-white/50 mt-4">{mode === 'pin' ? 'Introduce tu PIN para fichar · demo: 2222, 3333, 7777…' : 'Escanea el código con la cámara de tu móvil para fichar. Cambia cada 30 segundos.'}</div>
         </div>
         <div className="mx-auto w-full max-w-[360px]">
           <AnimatePresence mode="wait">
-            {!emp ? (
+            {mode === 'qr' ? (
+              <motion.div key="qr" initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="text-center">
+                <div className="relative mx-auto w-full max-w-[340px] aspect-square rounded-3xl bg-white p-4 shadow-[0_0_80px_-10px_rgba(124,58,237,.6)]">
+                  {qrImg && <img src={qrImg} alt="Código QR para fichar" className="w-full h-full" />}
+                </div>
+                <div className="mt-5 h-1.5 w-[340px] max-w-full mx-auto rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full" style={{ width: `${100 - ((now % QR_WINDOW) / QR_WINDOW) * 100}%`, background: 'linear-gradient(90deg,#7c3aed,#06b6d4)', transition: 'width 1s linear' }} /></div>
+                <div className="text-white/50 text-sm mt-2">Se renueva en {Math.ceil((QR_WINDOW - (now % QR_WINDOW)) / 1000)} s</div>
+              </motion.div>
+            ) : !emp ? (
               <motion.div key="pad" initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1, x: err ? [0, -12, 12, -8, 8, 0] : 0 }} exit={{ opacity: 0, scale: 0.97 }}>
                 <div className="flex justify-center gap-4 mb-8">
                   {[0, 1, 2, 3].map((i) => <span key={i} className={`h-4 w-4 rounded-full transition ${i < pin.length ? 'bg-white scale-110' : 'bg-white/15'} ${err ? '!bg-red-500' : ''}`} />)}

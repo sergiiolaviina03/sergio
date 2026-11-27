@@ -8,6 +8,7 @@ import { AiNote, Avatar, PageHeader, Section, Tabs, cx, toast } from '../compone
 import { LABEL } from '../components/ClockFlow'
 import { COMPANY } from '../data/seed'
 import { sha256 } from '../lib/sha256'
+import { saveFile } from '../lib/platform'
 
 export function LedgerPage() {
   const s = useStore()
@@ -32,10 +33,7 @@ export function LedgerPage() {
   const exportJson = () => {
     const data = scope === 'me' ? chain.filter((p) => p.empId === s.meId) : chain
     const body = { empresa: COMPANY.legal, cif: COMPANY.cif, generado: new Date().toISOString(), algoritmo: 'SHA-256 encadenado (seq|empleado|tipo|ts|lat|lng|precisión|zona|remoto|método|flags|nota|selfie|hashAnterior)', cabeza: head?.hash, registros: data.map(({ selfie, ...p }) => ({ ...p, selfieHash: selfie ? sha256(selfie) : undefined, empleado: emp(p.empId).name, fecha: new Date(p.ts).toISOString() })) }
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(new Blob([JSON.stringify(body, null, 2)], { type: 'application/json' }))
-    a.download = `registro-jornada-sellado-${fmt(Date.now(), 'yyyyMMdd-HHmm')}.json`
-    a.click()
+    saveFile(`registro-jornada-sellado-${fmt(Date.now(), 'yyyyMMdd-HHmm')}.json`, JSON.stringify(body, null, 2), 'application/json')
     toast({ title: 'Paquete para Inspección exportado', body: `${data.length} registros con su cadena de sellos.` })
   }
 

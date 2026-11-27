@@ -1,11 +1,25 @@
 import { create } from 'zustand'
 import type { Page } from './copilot'
+import { parseQrHash } from './qr'
+
+/** QR escaneado pendiente de procesar (se lee una vez). */
+export let pendingQr: { zoneId: string; token: string } | null = null
+export const takeQr = () => {
+  const q = pendingQr
+  pendingQr = null
+  return q
+}
 
 // Rutas con hash simple (#jornada) para que funcionen también como enlace compartido.
-const SLUG: Record<Page, string> = { home: 'inicio', clock: 'jornada', timesheet: 'hoja', timeoff: 'ausencias', payroll: 'nominas', team: 'equipo', inbox: 'bandeja', ledger: 'registro', settings: 'ajustes', kiosk: 'quiosco' }
+const SLUG: Record<Page, string> = { home: 'inicio', clock: 'jornada', timesheet: 'hoja', timeoff: 'ausencias', payroll: 'nominas', documents: 'documentos', expenses: 'gastos', people: 'personas', shifts: 'turnos', team: 'equipo', inbox: 'bandeja', ledger: 'registro', settings: 'ajustes', kiosk: 'quiosco' }
 const BY_SLUG = Object.fromEntries(Object.entries(SLUG).map(([k, v]) => [v, k])) as Record<string, Page>
 
 const read = (): Page => {
+  const q = parseQrHash(location.hash)
+  if (q) {
+    pendingQr = q
+    return 'clock'
+  }
   const h = location.hash.replace(/^#\/?/, '').split('?')[0]
   return BY_SLUG[h] ?? (h in SLUG ? (h as Page) : 'home')
 }

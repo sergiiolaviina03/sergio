@@ -1,7 +1,8 @@
 import type { Employee, Punch, TimeOffRequest } from '../types'
 import { HOLIDAYS, TIME_OFF_TYPES } from '../data/seed'
 import { dayKey, isoDow, toMin, atMin, parseDay } from './time'
-import { addDays, eachDayOfInterval } from 'date-fns'
+import { addDays, eachDayOfInterval, startOfWeek } from 'date-fns'
+import { useStore } from '../store'
 
 export type Seg = { from: number; to: number; kind: 'work' | 'break' }
 export type DaySummary = {
@@ -60,8 +61,16 @@ export function absenceOn(empId: string, k: string, reqs: TimeOffRequest[]) {
 
 export function plannedMin(emp: Employee, day: Date, reqs: TimeOffRequest[]) {
   const k = dayKey(day)
-  if (isoDow(day) > 5 || HOLIDAYS[k]) return 0
-  const daily = (emp.weeklyHours / 5) * 60
+  if (HOLIDAYS[k]) return 0
+  if (isoDow(day) > 5 && !useStore.getState?.().shifts?.some((x) => x.empId === emp.id && x.published && x.date === k)) return 0
+  let daily = (emp.weeklyHours / 5) * 60
+  // Si hay cuadrante publicado para esa semana, manda el cuadrante (incluido el fin de semana)
+  const sh = useStore.getState?.().shifts?.filter((x) => x.empId === emp.id && x.published) ?? []
+  if (sh.length) {
+    const ws = dayKey(startOfWeek(day, { weekStartsOn: 1 }))
+    const we = dayKey(addDays(startOfWeek(day, { weekStartsOn: 1 }), 6))
+    if (sh.some((x) => x.date >= ws && x.date <= we)) daily = sh.filter((x) => x.date === k).reduce((a, x) => a + shiftMinutes(x), 0)
+  }
   const a = absenceOn(emp.id, k, reqs)
   if (a) return a.hours ? Math.max(0, daily - a.hours * 60) : 0
   return daily
@@ -138,4 +147,10 @@ export function nextWorkday(d: Date) {
   let x = addDays(d, 1)
   while (isoDow(x) > 5 || HOLIDAYS[dayKey(x)]) x = addDays(x, 1)
   return x
+}
+
+export function shiftMinutes(x: { start: string; end: string; breakMin: number }) {
+  let d = toMin(x.end) - toMin(x.start)
+  if (d <= 0) d += 24 * 60
+  return Math.max(0, d - x.breakMin)
 }
