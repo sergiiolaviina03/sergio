@@ -1,3 +1,4 @@
+import logo from '../assets/aura.svg'
 import { Delete, LogOut, X, Coffee, LogIn, Play } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -56,7 +57,7 @@ export function KioskPage() {
     <div className="dark min-h-screen bg-[#07070d] text-white relative overflow-hidden flex flex-col">
       <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(800px 500px at 20% 10%, rgb(124 58 237 / .25), transparent 60%), radial-gradient(700px 500px at 90% 90%, rgb(6 182 212 / .18), transparent 60%)' }} />
       <header className="relative flex items-center gap-3 p-6">
-        <img src="/aura.svg" className="h-9 w-9" alt="" />
+        <img src={logo} className="h-9 w-9" alt="" />
         <div className="leading-tight"><div className="font-semibold">Aura · Quiosco</div><div className="text-xs text-white/50">{zone.name}</div></div>
         <button onClick={() => go('home')} className="ml-auto h-9 px-3 rounded-xl bg-white/5 hover:bg-white/10 text-sm flex items-center gap-2"><X size={15} /> Salir</button>
       </header>

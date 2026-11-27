@@ -1,3 +1,4 @@
+import logo from '../assets/aura.svg'
 import { Home, Timer, CalendarDays, Wallet, Users, Inbox, ShieldCheck, Settings, Sparkles, Table2, MonitorSmartphone, Moon, Sun, Menu, Bell } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -76,7 +77,7 @@ export function Layout({ children }: { children: ReactNode }) {
       {/* Sidebar */}
       <aside className="hidden lg:flex w-[248px] shrink-0 flex-col gap-5 px-3 py-4 border-r border-line bg-bg sticky top-0 h-screen">
         <div className="flex items-center gap-2.5 px-2">
-          <img src="/aura.svg" className="h-8 w-8" alt="" />
+          <img src={logo} className="h-8 w-8" alt="" />
           <div className="leading-tight">
             <div className="font-semibold tracking-tight">Aura</div>
             <div className="text-[11px] text-muted">{COMPANY.name}</div>
@@ -109,7 +110,7 @@ export function Layout({ children }: { children: ReactNode }) {
 
       {/* Mobile top bar */}
       <div className="lg:hidden fixed top-0 inset-x-0 z-40 h-14 px-4 flex items-center gap-3 bg-bg/85 backdrop-blur border-b border-line">
-        <img src="/aura.svg" className="h-7 w-7" alt="" />
+        <img src={logo} className="h-7 w-7" alt="" />
         <span className="font-semibold">Aura</span>
         <button onClick={() => setBell(!bell)} className="ml-auto relative h-9 w-9 rounded-lg grid place-items-center" aria-label="Notificaciones">
           <Bell size={18} />
