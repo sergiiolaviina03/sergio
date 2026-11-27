@@ -1,0 +1,55 @@
+export type PunchType = 'in' | 'out' | 'break_start' | 'break_end'
+export type Method = 'app' | 'kiosk' | 'copilot' | 'correction'
+
+export type Zone = { id: string; name: string; address: string; lat: number; lng: number; radius: number; color: string }
+
+export type Employee = {
+  id: string
+  name: string
+  role: string
+  team: string
+  managerId?: string
+  zoneId: string
+  hue: number
+  salary: number // bruto anual
+  pagas: 12 | 14
+  contract: 'indefinido' | 'temporal'
+  weeklyHours: number
+  start: string // HH:mm
+  end: string
+  breakMin: number
+  remoteDays: number[] // 1=lunes … 5=viernes
+  pin: string
+  birthday: string // MM-DD
+  hiredAt: string // YYYY-MM-DD
+  children: number
+}
+
+export type Punch = {
+  id: string
+  seq: number
+  empId: string
+  type: PunchType
+  ts: number
+  lat?: number
+  lng?: number
+  acc?: number
+  zoneId?: string | null // null = fuera de zona, undefined = sin ubicación
+  dist?: number
+  remote?: boolean
+  method: Method
+  selfie?: string
+  flags: string[]
+  note?: string
+  prevHash: string
+  hash: string
+}
+
+export type TimeOffType = { id: string; name: string; unit: 'días' | 'horas'; allowance: number | null; color: string; emoji: string; paid: boolean }
+export type RequestStatus = 'pending' | 'approved' | 'rejected'
+export type TimeOffRequest = { id: string; empId: string; typeId: string; from: string; to: string; hours?: number; note?: string; status: RequestStatus; createdAt: number; decidedBy?: string }
+
+export type Correction = { id: string; empId: string; type: PunchType; ts: number; reason: string; status: RequestStatus; createdAt: number }
+export type Period = { empId: string; month: string; status: 'open' | 'submitted' | 'approved' }
+
+export type Notice = { id: string; ts: number; title: string; body?: string; read?: boolean; icon?: string }

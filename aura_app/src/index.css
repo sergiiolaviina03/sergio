@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: 247 247 251;
+  --surface: 255 255 255;
+  --sunken: 242 242 247;
+  --line: 230 230 238;
+  --ink: 22 22 35;
+  --muted: 110 110 130;
+  --brand: 99 91 255;
+  --ok: 16 185 129;
+  --warn: 245 158 11;
+  --bad: 239 68 68;
+  color-scheme: light;
+}
+.dark {
+  --bg: 11 11 18;
+  --surface: 19 19 29;
+  --sunken: 26 26 38;
+  --line: 40 40 56;
+  --ink: 236 236 245;
+  --muted: 150 150 172;
+  --brand: 139 128 255;
+  color-scheme: dark;
+}
+
+html, body, #root { height: 100%; }
+body {
+  @apply bg-bg text-ink font-sans antialiased;
+  font-feature-settings: 'cv11', 'ss01', 'tnum';
+}
+
+@layer components {
+  .card { @apply bg-surface border border-line rounded-2xl shadow-card; }
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded-xl px-3.5 h-9 text-sm font-medium transition active:scale-[.98] disabled:opacity-50 disabled:pointer-events-none; }
+  .btn-primary { @apply btn bg-ink text-surface hover:opacity-90; }
+  .btn-brand { @apply btn text-white bg-brand hover:brightness-110 shadow-glow; }
+  .btn-ghost { @apply btn text-ink hover:bg-sunken; }
+  .btn-outline { @apply btn border border-line bg-surface hover:bg-sunken; }
+  .chip { @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium; }
+  .input { @apply w-full h-10 rounded-xl border border-line bg-surface px-3 text-sm outline-none focus:ring-4 focus:ring-brand/15 focus:border-brand/60 transition; }
+  .label { @apply text-xs font-medium text-muted mb-1.5 block; }
+  .h-title { @apply text-[22px] font-semibold tracking-tight; }
+  .kpi { @apply text-2xl font-semibold tracking-tight tabular-nums; }
+  .aurora-text { @apply bg-clip-text text-transparent; background-image: linear-gradient(90deg,#8b5cf6,#6366f1,#22d3ee,#8b5cf6); background-size: 200% auto; animation: shimmer 6s linear infinite; }
+  .aurora-bg { background-image: radial-gradient(1200px 400px at 10% -10%, rgb(139 92 246 / .14), transparent 60%), radial-gradient(900px 400px at 100% 0%, rgb(34 211 238 / .12), transparent 60%); }
+  .aurora-border { position: relative; }
+  .aurora-border::before { content: ''; position: absolute; inset: -1px; border-radius: inherit; padding: 1px; background: linear-gradient(120deg,#8b5cf6,#6366f1,#22d3ee,#8b5cf6); background-size: 200% auto; animation: shimmer 5s linear infinite; -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none; }
+}
+
+.leaflet-container { font-family: inherit; background: rgb(var(--sunken)); }
+.tiles-light { filter: grayscale(1) brightness(1.06) contrast(.88) sepia(.08) hue-rotate(200deg) saturate(1.4); }
+.tiles-dark { filter: invert(1) hue-rotate(200deg) grayscale(.85) brightness(.72) contrast(1.1); }
+.leaflet-control-attribution { font-size: 9px !important; background: rgb(var(--surface) / .7) !important; color: rgb(var(--muted)) !important; }
+.leaflet-control-attribution a { color: rgb(var(--muted)) !important; }
+.leaflet-bar a { background: rgb(var(--surface)) !important; color: rgb(var(--ink)) !important; border-color: rgb(var(--line)) !important; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: rgb(var(--line)); border-radius: 10px; border: 3px solid rgb(var(--bg)); }
+
+@media print {
+  body * { visibility: hidden; }
+  .print-area, .print-area * { visibility: visible; }
+  .print-area { position: absolute; inset: 0; border: 0; box-shadow: none; }
+  .no-print { display: none !important; }
+}
