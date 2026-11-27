@@ -174,20 +174,15 @@ language sql immutable set search_path = public, extensions as $$
     p.prev_hash)
 $$;
 
-create or replace function public.clock(c uuid, p jsonb) returns public.punches
+-- Inserción sellada (uso interno: no la puede llamar nadie desde la app)
+create or replace function public._insert_punch(c uuid, p jsonb) returns public.punches
 language plpgsql security definer set search_path = public, extensions as $$
 declare
   r public.punches;
   last_hash text;
   last_seq bigint;
   now_ms bigint := floor(extract(epoch from clock_timestamp()) * 1000);
-  me text := my_emp(c);
 begin
-  if me is null then raise exception 'No perteneces a esta empresa'; end if;
-  -- Cada persona ficha lo suyo; los responsables pueden fichar por otros (quiosco, correcciones aprobadas)
-  if p->>'empId' <> me and not is_manager(c) then raise exception 'Solo puedes fichar por ti'; end if;
-  if (p->>'method') in ('correction', 'import') and not is_manager(c) then raise exception 'Solo un responsable puede registrar correcciones o importar'; end if;
-
   perform pg_advisory_xact_lock(hashtext(c::text));
   select seq, hash into last_seq, last_hash from punches where company_id = c order by seq desc limit 1;
 
@@ -204,7 +199,7 @@ begin
   r.remote := coalesce((p->>'remote')::boolean, false);
   r.method := coalesce(p->>'method', 'app');
   r.flags := coalesce(array(select jsonb_array_elements_text(p->'flags')), '{}');
-  -- Reloj del dispositivo manipulado (salvo correcciones, que son retroactivas por definición)
+  -- Reloj del dispositivo manipulado (salvo correcciones e importaciones, que son retroactivas por definición)
   if r.method not in ('correction', 'import') and abs(r.ts - now_ms) > 5 * 60 * 1000 then r.flags := array_append(r.flags, 'hora_dispositivo'); end if;
   r.note := p->>'note';
   r.selfie := p->>'selfie';
@@ -214,6 +209,21 @@ begin
   r.hash := encode(digest(punch_canonical(r), 'sha256'), 'hex');
   insert into punches values (r.*);
   return r;
+end $$;
+revoke execute on function public._insert_punch(uuid, jsonb) from public;
+-- Supabase concede por defecto EXECUTE a anon/authenticated en funciones nuevas: se retira explícitamente
+do $$ begin revoke execute on function public._insert_punch(uuid, jsonb) from anon, authenticated; exception when undefined_object then null; end $$;
+
+create or replace function public.clock(c uuid, p jsonb) returns public.punches
+language plpgsql security definer set search_path = public, extensions as $$
+declare me text := my_emp(c);
+begin
+  if me is null then raise exception 'No perteneces a esta empresa'; end if;
+  -- Cada persona ficha lo suyo; los responsables pueden fichar por otros (quiosco, correcciones aprobadas)
+  if p->>'empId' <> me and not is_manager(c) then raise exception 'Solo puedes fichar por ti'; end if;
+  if (p->>'method') in ('correction', 'import') and not is_manager(c) then raise exception 'Solo un responsable puede registrar correcciones o importar'; end if;
+  if (p->>'method') = 'whatsapp' then raise exception 'Método no permitido'; end if;
+  return _insert_punch(c, p);
 end $$;
 
 -- Importación masiva del histórico de otro sistema (cada fichaje queda marcado method = 'import')
@@ -309,3 +319,44 @@ do $$ begin
 exception when undefined_table or invalid_schema_name then
   raise notice 'Storage no disponible en esta base de datos: se omiten los archivos';
 end $$;
+
+
+-- ---------- Fichaje por WhatsApp ----------
+-- Lo usa la función del servidor `whatsapp` (supabase/functions/whatsapp) con la clave de servicio.
+create table if not exists public.wa_sessions (
+  phone text primary key,
+  company_id uuid references public.companies(id) on delete cascade,
+  emp_id text,
+  pending text,
+  expires_at timestamptz
+);
+alter table public.wa_sessions enable row level security; -- sin políticas: solo el servidor
+
+create or replace function public.wa_norm(p text) returns text language sql immutable as $$
+  select case when length(d) = 9 then '34' || d else d end
+  from (select regexp_replace(regexp_replace(coalesce(p, ''), '[^0-9]', '', 'g'), '^00', '') as d) x
+$$;
+
+-- Personas con ese móvil en su ficha (puede haber varias empresas)
+create or replace function public.wa_find(phone text)
+returns table (company_id uuid, emp_id text, name text, zone_id text, company_name text)
+language sql stable security definer set search_path = public as $$
+  select r.company_id, r.id, e.data->>'name', e.data->>'zoneId', c.name
+  from records r
+  join records e on e.company_id = r.company_id and e.collection = 'employees' and e.id = r.id
+  join companies c on c.id = r.company_id
+  where r.collection = 'payroll' and wa_norm(r.data->>'phone') = wa_norm(phone) and wa_norm(phone) <> ''
+$$;
+
+create or replace function public.wa_clock(c uuid, emp text, p jsonb) returns public.punches
+language sql security definer set search_path = public as $$
+  select * from _insert_punch(c, p || jsonb_build_object('empId', emp, 'method', 'whatsapp'))
+$$;
+
+revoke execute on function public.wa_find(text), public.wa_clock(uuid, text, jsonb) from public;
+do $$ begin revoke execute on function public.wa_find(text), public.wa_clock(uuid, text, jsonb) from anon, authenticated; exception when undefined_object then null; end $$;
+do $$ begin
+  grant execute on function public.wa_find(text), public.wa_clock(uuid, text, jsonb), public._insert_punch(uuid, jsonb) to service_role;
+  grant select, insert, update, delete on public.wa_sessions to service_role;
+  grant select on public.records, public.punches, public.companies to service_role;
+exception when undefined_object then null; end $$;

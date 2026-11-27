@@ -7,6 +7,7 @@ import { uid } from '../lib/rng'
 import { dayKey } from '../lib/time'
 import { useStore } from '../store'
 import { cx } from './ui'
+import { publicBase } from '../lib/platform'
 import type { Employee } from '../types'
 
 function Shell({ children, wide }: { children: React.ReactNode; wide?: boolean }) {
@@ -60,7 +61,7 @@ export function AuthScreen() {
     e.preventDefault()
     setBusy(true)
     setMsg(undefined)
-    const redirect = location.origin + location.pathname + location.hash
+    const redirect = publicBase() + location.hash
     const r =
       mode === 'in'
         ? await client.auth.signInWithPassword({ email, password: pass })

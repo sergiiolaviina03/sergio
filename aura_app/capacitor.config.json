@@ -1,0 +1,7 @@
+{
+  "appId": "app.aura.fichaje",
+  "appName": "Aura",
+  "webDir": "dist",
+  "android": { "backgroundColor": "#f7f7fb" },
+  "plugins": { "StatusBar": { "overlaysWebView": false, "style": "DEFAULT" } }
+}

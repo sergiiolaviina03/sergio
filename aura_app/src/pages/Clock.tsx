@@ -1,4 +1,4 @@
-import { Timer, MapPin, ShieldCheck, Home as HomeIcon, Crosshair, Camera, Radar, Loader2 } from 'lucide-react'
+import { MessageCircle, Timer, MapPin, ShieldCheck, Home as HomeIcon, Crosshair, Camera, Radar, Loader2 } from 'lucide-react'
 import { useState } from 'react'
 import { useMe, useStore } from '../store'
 import { useNow, useToday } from '../lib/hooks'
@@ -11,6 +11,7 @@ import { cap, dayKey, fmt, hm, isoDow } from '../lib/time'
 import { short } from '../lib/ledger'
 import { plannedMin } from '../lib/attendance'
 import { go } from '../lib/nav'
+import { waNumber } from './Settings'
 
 const FLAG: Record<string, string> = { fuera_de_zona: 'Fuera de zona', precision_baja: 'Precisión baja', posible_ubicacion_simulada: 'Ubicación sospechosa', viaje_imposible: 'Viaje imposible', sin_ubicacion: 'Sin ubicación', demo: 'Demo', sin_selfie: 'Sin selfie', corrección: 'Corrección' }
 
@@ -84,6 +85,12 @@ export function ClockPage() {
               </Section>
             ) : null
           })()}
+          {waNumber() && (
+            <a href={`https://wa.me/${waNumber()}?text=${encodeURIComponent(today.state === 'working' ? 'salida' : today.state === 'break' ? 'vuelvo' : 'entrada')}`} target="_blank" rel="noreferrer" className="card p-4 flex items-center gap-3 hover:shadow-pop transition">
+              <span className="h-10 w-10 rounded-xl grid place-items-center text-white" style={{ background: '#25D366' }}><MessageCircle size={19} /></span>
+              <div className="flex-1"><div className="text-sm font-medium">Fichar por WhatsApp</div><div className="text-xs text-muted">Escribe «entrada» o «salida» y comparte tu ubicación</div></div>
+            </a>
+          )}
           {today.state === 'working' && today.worked > 5.5 * 60 && today.breaks < 15 && s.settings.autoBreakReminder && (
             <AiNote>Llevas más de 5 h 30 m sin pausa. A partir de 6 h la ley exige un descanso de 15 min: ¿te paras un momento? ☕</AiNote>
           )}

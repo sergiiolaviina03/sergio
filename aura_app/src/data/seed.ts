@@ -6,7 +6,7 @@ import { sealChain } from '../lib/ledger'
 import { addDays, startOfMonth, subMonths } from 'date-fns'
 
 // Empresa ficticia de demostración. Ningún dato real.
-export type Company = { name: string; legal: string; cif: string; ccc: string; address: string }
+export type Company = { name: string; legal: string; cif: string; ccc: string; address: string; waNumber?: string; waRequireLocation?: boolean }
 // Objeto vivo: el store lo sincroniza cuando la empresa edita sus datos (lo usan PDFs y exportaciones).
 export const COMPANY: Company = { name: 'Nébula Labs', legal: 'Nébula Labs S.L.', cif: 'B00000000', ccc: '28/0000000/00', address: 'Paseo de la Castellana 81, 28046 Madrid' }
 

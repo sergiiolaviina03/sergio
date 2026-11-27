@@ -1,5 +1,5 @@
 export type PunchType = 'in' | 'out' | 'break_start' | 'break_end'
-export type Method = 'app' | 'kiosk' | 'copilot' | 'correction' | 'qr' | 'import'
+export type Method = 'app' | 'kiosk' | 'copilot' | 'correction' | 'qr' | 'import' | 'whatsapp'
 
 export type Zone = { id: string; name: string; address: string; lat: number; lng: number; radius: number; color: string }
 

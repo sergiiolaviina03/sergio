@@ -56,3 +56,30 @@ export function speak(text: string) {
   u.rate = 1.04
   speechSynthesis.speak(u)
 }
+
+/* ---------- App nativa (Android/iOS con Capacitor) ---------- */
+import { Capacitor } from '@capacitor/core'
+export const isNative = Capacitor.isNativePlatform()
+
+/** URL pública de Aura (para enlaces de invitación y QR). Dentro de la app nativa no vale location. */
+export function publicBase() {
+  if (!isNative) return location.origin + location.pathname
+  return (import.meta.env.VITE_PUBLIC_URL as string | undefined) || 'https://sergiiolaviina03.github.io/sergio/'
+}
+
+export async function initNative() {
+  if (!isNative) return
+  const [{ App }, { StatusBar, Style }] = await Promise.all([import('@capacitor/app'), import('@capacitor/status-bar')])
+  const dark = matchMedia('(prefers-color-scheme: dark)').matches
+  StatusBar.setStyle({ style: dark ? Style.Dark : Style.Light }).catch(() => {})
+  StatusBar.setBackgroundColor({ color: dark ? '#0b0b12' : '#f7f7fb' }).catch(() => {})
+  App.addListener('backButton', ({ canGoBack }) => {
+    // Cierra primero cualquier ventana abierta; si no hay, vuelve atrás o minimiza
+    const open = document.querySelector('[role=dialog]')
+    if (open) return window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    if (canGoBack && location.hash && !/^#(inicio)?$/.test(location.hash)) history.back()
+    else App.minimizeApp()
+  })
+  // Al volver a la app, comprueba fichajes pendientes de enviar
+  App.addListener('resume', () => window.dispatchEvent(new Event('online')))
+}

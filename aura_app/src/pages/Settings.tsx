@@ -1,4 +1,4 @@
-import { Settings, MapPin, Plus, Trash2, RotateCcw, Radar, ShieldCheck, Palette, Server, LogOut, Upload, ArrowRight, Download } from 'lucide-react'
+import { Settings, MapPin, Plus, Trash2, RotateCcw, Radar, ShieldCheck, Palette, Server, LogOut, Upload, ArrowRight, Download, MessageCircle } from 'lucide-react'
 import { saveFile } from '../lib/platform'
 import { dayKey } from '../lib/time'
 import { cloud, saveServerConfig, serverConfig, signOut, useDemo, demoForced } from '../lib/cloud'
@@ -86,6 +86,7 @@ export function SettingsPage() {
             <Tabs value={s.settings.theme} onChange={(v) => s.setSettings({ theme: v })} items={[{ id: 'light', label: 'Claro' }, { id: 'dark', label: 'Oscuro' }, { id: 'system', label: 'Sistema' }]} />
           </Section>
           <ServerSection />
+          {manager && <WhatsAppSection />}
           {manager && (
             <button onClick={() => go('import')} className="card p-5 w-full text-left flex items-center gap-3 hover:shadow-pop transition">
               <span className="h-10 w-10 rounded-xl bg-brand/10 text-brand grid place-items-center"><Upload size={18} /></span>
@@ -147,6 +148,23 @@ function ServerSection() {
           {cfg && !cfg.fromEnv && <button className="btn-ghost w-full mt-1 text-xs" onClick={() => saveServerConfig('', null)}>Desconectar servidor guardado</button>}
         </>
       )}
+    </Section>
+  )
+}
+
+export const waNumber = () => (useStore.getState().company.waNumber || (import.meta.env.VITE_WHATSAPP_NUMBER as string | undefined) || '').replace(/[^0-9]/g, '')
+
+function WhatsAppSection() {
+  const company = useStore((s) => s.company)
+  const setCompany = useStore((s) => s.setCompany)
+  const num = company.waNumber ?? ''
+  return (
+    <Section title="Fichar por WhatsApp" icon={<MessageCircle size={15} />}>
+      <p className="text-sm text-muted mb-3">Cada persona escribe «entrada», «pausa», «vuelvo» o «salida» al número de Aura; el bot le pide la ubicación, comprueba su centro y sella el fichaje. Solo responde a los móviles dados de alta en las fichas.</p>
+      <label className="label" htmlFor="wa-num">Número de WhatsApp de Aura</label>
+      <input id="wa-num" className="input" placeholder="+34 600 000 000" value={num} onChange={(e) => setCompany({ waNumber: e.target.value })} />
+      <Toggle on={company.waRequireLocation !== false} onChange={(v) => setCompany({ waRequireLocation: v })} label="Pedir ubicación al fichar" hint="Si se desactiva, el fichaje se registra al momento y queda marcado «sin ubicación»." />
+      <p className="text-xs text-muted">Requiere el servidor conectado y la función de WhatsApp desplegada (guía en <code>supabase/WHATSAPP.md</code>).</p>
     </Section>
   )
 }

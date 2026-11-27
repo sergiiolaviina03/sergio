@@ -5,6 +5,7 @@ import { create } from 'zustand'
 import { useStore } from '../store'
 import type { Employee, HRDocument, Punch, PunchType, Signature } from '../types'
 import { uid } from './rng'
+import { publicBase } from './platform'
 import { sha256 } from './sha256'
 import { COMPANY } from '../data/seed'
 
@@ -445,7 +446,7 @@ export async function createInvite(employeeId: string, role: Role = 'employee') 
   if (!client || !companyId) throw new Error('Sin servidor')
   const { data, error } = await client.rpc('create_invite', { c: companyId, employee_id: employeeId, invite_role: role })
   if (error) throw new Error(error.message)
-  return { code: data as string, link: `${location.origin}${location.pathname}#unirse-${data}` }
+  return { code: data as string, link: `${publicBase()}#unirse-${data}` }
 }
 
 export async function joinWithCode(code: string) {

@@ -156,7 +156,7 @@ function CompanyForm() {
   const c = useStore((s) => s.company)
   const set = useStore((s) => s.setCompany)
   const field = (k: keyof typeof c, label: string) => (
-    <div><label className="label" htmlFor={`co-${k}`}>{label}</label><input id={`co-${k}`} className="input" value={c[k]} onChange={(e) => set({ [k]: e.target.value })} /></div>
+    <div><label className="label" htmlFor={`co-${k}`}>{label}</label><input id={`co-${k}`} className="input" value={String(c[k] ?? "")} onChange={(e) => set({ [k]: e.target.value })} /></div>
   )
   return (
     <Section title="Datos de la empresa" icon={<Building2 size={15} />} className="max-w-2xl">
@@ -200,6 +200,9 @@ function EmployeeForm({ emp, onClose }: { emp: Employee | null; onClose: () => v
         <div><label className="label" htmlFor={id('team')}>Equipo</label><input id={id('team')} className="input" list="teams" value={f.team} onChange={(e) => up({ team: e.target.value })} /><datalist id="teams">{[...new Set(s.employees.map((e) => e.team))].map((t) => <option key={t} value={t} />)}</datalist></div>
         <div><label className="label" htmlFor={id('mgr')}>Responsable</label><select id={id('mgr')} className="input" value={f.managerId ?? ''} onChange={(e) => up({ managerId: e.target.value || undefined })}><option value="">— Nadie —</option>{s.employees.filter((x) => x.id !== f.id).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></div>
         <div><label className="label" htmlFor={id('zone')}>Centro de trabajo</label><select id={id('zone')} className="input" value={f.zoneId} onChange={(e) => up({ zoneId: e.target.value })}>{s.zones.map((z) => <option key={z.id} value={z.id}>{z.name}</option>)}</select></div>
+        <div><label className="label" htmlFor={id('email')}>Email</label><input id={id('email')} type="email" className="input" value={f.email ?? ''} onChange={(e) => up({ email: e.target.value || undefined })} /></div>
+        <div><label className="label" htmlFor={id('phone')}>Móvil <span className="text-muted font-normal">(para fichar por WhatsApp)</span></label><input id={id('phone')} type="tel" className="input" placeholder="612 345 678" value={f.phone ?? ''} onChange={(e) => up({ phone: e.target.value || undefined })} /></div>
+        <div><label className="label" htmlFor={id('dni')}>DNI / NIE</label><input id={id('dni')} className="input uppercase" value={f.dni ?? ''} onChange={(e) => up({ dni: e.target.value.toUpperCase() || undefined })} /></div>
         <div><label className="label" htmlFor={id('hired')}>Fecha de alta</label><input id={id('hired')} type="date" className="input" value={f.hiredAt} onChange={(e) => up({ hiredAt: e.target.value })} /></div>
       </div>
       <div className="text-xs font-semibold text-muted uppercase tracking-wider mt-6 mb-2">Jornada</div>

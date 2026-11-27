@@ -1,0 +1,90 @@
+name: App Android de Aura
+
+on:
+  push:
+    branches: [main, claude/dazzling-ritchie-33t6g2]
+    paths: ['aura_app/**', '.github/workflows/aura-android.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: aura_app
+    env:
+      VITE_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+      VITE_PUBLIC_URL: ${{ vars.PUBLIC_URL }}
+      AURA_VERSION_CODE: ${{ github.run_number }}
+      AURA_VERSION_NAME: 1.0.${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: aura_app/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci
+      - run: npm run build
+      - run: npx cap sync android
+
+      - name: Preparar firma (si hay secretos)
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/aura.jks"
+            echo "AURA_KEYSTORE_PATH=$RUNNER_TEMP/aura.jks" >> "$GITHUB_ENV"
+          fi
+
+      - name: Compilar APK (instalación directa) y AAB (Google Play)
+        working-directory: aura_app/android
+        env:
+          AURA_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          AURA_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          AURA_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          if [ -n "$AURA_KEYSTORE_PATH" ]; then
+            ./gradlew --no-daemon assembleRelease bundleRelease
+            cp app/build/outputs/apk/release/app-release.apk ../Aura.apk
+            cp app/build/outputs/bundle/release/app-release.aab ../Aura-google-play.aab
+          else
+            ./gradlew --no-daemon assembleDebug
+            cp app/build/outputs/apk/debug/app-debug.apk ../Aura.apk
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aura-android
+          path: |
+            aura_app/Aura.apk
+            aura_app/Aura-google-play.aab
+          if-no-files-found: ignore
+
+      - name: Publicar descarga
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-latest
+          name: Aura para Android (última versión)
+          prerelease: true
+          make_latest: false
+          body: |
+            Descarga **Aura.apk** en el móvil Android y ábrelo para instalar (permite «instalar apps de origen desconocido» si lo pide).
+            Versión 1.0.${{ github.run_number }} · compilada desde ${{ github.sha }}.
+          files: |
+            aura_app/Aura.apk
+            aura_app/Aura-google-play.aab
+          fail_on_unmatched_files: false
