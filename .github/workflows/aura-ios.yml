@@ -1,0 +1,78 @@
+name: App iOS de Aura
+
+on:
+  push:
+    branches: [main, claude/dazzling-ritchie-33t6g2]
+    paths: ['aura_app/**', '.github/workflows/aura-ios.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: ios
+  cancel-in-progress: true
+
+jobs:
+  ios:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: aura_app
+    env:
+      VITE_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+      VITE_PUBLIC_URL: ${{ vars.PUBLIC_URL }}
+      VERSION: 1.0.${{ github.run_number }}
+      BUILD: ${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: aura_app/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: npx cap sync ios
+
+      # 1) Siempre: compilación para el simulador de iPhone (comprueba que la app compila; no necesita cuenta de Apple)
+      - name: Compilar para el simulador
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO \
+            MARKETING_VERSION=$VERSION CURRENT_PROJECT_VERSION=$BUILD | tail -20
+          cd build/Build/Products/Release-iphonesimulator && zip -qr "$GITHUB_WORKSPACE/aura_app/Aura-simulador-iOS.zip" App.app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aura-ios-simulador
+          path: aura_app/Aura-simulador-iOS.zip
+
+      # 2) Con cuenta de Apple Developer configurada: firma y sube a TestFlight / App Store Connect
+      - name: Firmar y subir a TestFlight
+        env:
+          KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
+          ISSUER_ID: ${{ secrets.APPSTORE_API_ISSUER_ID }}
+          KEY_P8: ${{ secrets.APPSTORE_API_KEY_P8 }}
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [ -z "$KEY_ID" ] || [ -z "$TEAM_ID" ]; then
+            echo "Sin cuenta de Apple configurada: se omite la subida a TestFlight (ver aura_app/IOS.md)."
+            exit 0
+          fi
+          mkdir -p ~/private_keys
+          echo "$KEY_P8" > ~/private_keys/AuthKey_$KEY_ID.p8
+          AUTH="-allowProvisioningUpdates -authenticationKeyPath $HOME/private_keys/AuthKey_$KEY_ID.p8 -authenticationKeyID $KEY_ID -authenticationKeyIssuerID $ISSUER_ID"
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath build/Aura.xcarchive archive \
+            DEVELOPMENT_TEAM=$TEAM_ID CODE_SIGN_STYLE=Automatic \
+            MARKETING_VERSION=$VERSION CURRENT_PROJECT_VERSION=$BUILD $AUTH | tail -20
+          cat > build/ExportOptions.plist <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>$TEAM_ID</string>
+            <key>signingStyle</key><string>automatic</string>
+          </dict></plist>
+          PLIST
+          xcodebuild -exportArchive -archivePath build/Aura.xcarchive -exportOptionsPlist build/ExportOptions.plist -exportPath build/export $AUTH | tail -20

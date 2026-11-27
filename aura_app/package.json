@@ -13,6 +13,7 @@
     "@capacitor/android": "^7.6.11",
     "@capacitor/app": "^7.1.2",
     "@capacitor/core": "^7.6.11",
+    "@capacitor/ios": "^7.6.11",
     "@capacitor/status-bar": "^7.0.6",
     "@supabase/supabase-js": "^2.119.2",
     "clsx": "^2.1.1",

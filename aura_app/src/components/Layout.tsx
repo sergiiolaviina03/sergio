@@ -119,7 +119,7 @@ export function Layout({ children }: { children: ReactNode }) {
       </aside>
 
       {/* Mobile top bar */}
-      <div className="lg:hidden fixed top-0 inset-x-0 z-40 h-14 px-4 flex items-center gap-3 bg-bg/85 backdrop-blur border-b border-line">
+      <div className="lg:hidden fixed top-0 inset-x-0 z-40 h-[calc(3.5rem+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)] px-4 flex items-center gap-3 bg-bg/85 backdrop-blur border-b border-line">
         <img src={logo} className="h-7 w-7" alt="" />
         <span className="font-semibold">Aura</span>
         <button onClick={() => setBell(!bell)} className="ml-auto relative h-9 w-9 rounded-lg grid place-items-center" aria-label="Notificaciones">
@@ -134,7 +134,7 @@ export function Layout({ children }: { children: ReactNode }) {
         {mobileMenu && (
           <motion.div className="lg:hidden fixed inset-0 z-50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <div className="absolute inset-0 bg-black/30" onClick={() => setMobileMenu(false)} />
-            <motion.div className="absolute right-0 top-0 bottom-0 w-[280px] bg-bg border-l border-line p-4 overflow-auto" initial={{ x: 300 }} animate={{ x: 0 }} exit={{ x: 300 }} transition={{ type: 'spring', stiffness: 400, damping: 40 }}>
+            <motion.div className="absolute right-0 top-0 bottom-0 w-[280px] bg-bg border-l border-line p-4 pt-[calc(1rem+env(safe-area-inset-top))] overflow-auto" initial={{ x: 300 }} animate={{ x: 0 }} exit={{ x: 300 }} transition={{ type: 'spring', stiffness: 400, damping: 40 }}>
               <div className="flex items-center gap-2.5 mb-5">
                 <Avatar emp={me} size={36} />
                 <div className="flex-1 leading-tight">
@@ -152,7 +152,7 @@ export function Layout({ children }: { children: ReactNode }) {
       <Notifications open={bell} onClose={() => setBell(false)} />
 
       <main className="flex-1 min-w-0 aurora-bg">
-        <div className="max-w-[1180px] mx-auto px-4 sm:px-6 lg:px-8 pt-20 lg:pt-8 pb-28 lg:pb-12">
+        <div className="max-w-[1180px] mx-auto px-4 sm:px-6 lg:px-8 pt-[calc(5rem+env(safe-area-inset-top))] lg:pt-8 pb-28 lg:pb-12">
           <motion.div key={page} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
             {children}
           </motion.div>
