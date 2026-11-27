@@ -86,7 +86,7 @@ export function SettingsPage() {
             <Tabs value={s.settings.theme} onChange={(v) => s.setSettings({ theme: v })} items={[{ id: 'light', label: 'Claro' }, { id: 'dark', label: 'Oscuro' }, { id: 'system', label: 'Sistema' }]} />
           </Section>
           <ServerSection />
-          {manager && <WhatsAppSection />}
+          {manager && import.meta.env.VITE_ENABLE_WHATSAPP === 'true' && <WhatsAppSection />}
           {manager && (
             <button onClick={() => go('import')} className="card p-5 w-full text-left flex items-center gap-3 hover:shadow-pop transition">
               <span className="h-10 w-10 rounded-xl bg-brand/10 text-brand grid place-items-center"><Upload size={18} /></span>

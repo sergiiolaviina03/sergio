@@ -16,6 +16,7 @@ jobs:
     defaults:
       run:
         working-directory: aura_app
+        shell: bash -eo pipefail {0}
     env:
       VITE_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
       VITE_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
