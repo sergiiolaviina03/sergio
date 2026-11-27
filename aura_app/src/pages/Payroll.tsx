@@ -81,7 +81,7 @@ function MySlip() {
           <div className="text-right">
             <div className="text-sm font-medium">{me.name}</div>
             <div className="text-xs text-muted">{me.role} · {me.contract === 'indefinido' ? 'Indefinido' : 'Temporal'} · {me.pagas} pagas</div>
-            <button onClick={async () => { const ok = await saveFile(`nomina-${monthKey(month)}.pdf`, payslipPdf(me, p, cap(fmt(month, 'MMMM yyyy')))); toast(ok ? { title: 'Nómina descargada' } : { title: 'No se pudo descargar', tone: 'warn' }) }} className="btn-outline h-8 mt-2"><Download size={14} /> Descargar PDF</button>
+            <button onClick={async () => { const ok = await saveFile(`nomina-${monthKey(month)}.pdf`, await payslipPdf(me, p, cap(fmt(month, 'MMMM yyyy')))); toast(ok ? { title: 'Nómina descargada' } : { title: 'No se pudo descargar', tone: 'warn' }) }} className="btn-outline h-8 mt-2"><Download size={14} /> Descargar PDF</button>
           </div>
         </div>
         <div className="p-6 grid md:grid-cols-2 gap-6">

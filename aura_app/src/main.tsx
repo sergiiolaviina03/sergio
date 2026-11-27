@@ -2,7 +2,10 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App'
-import { initCloud } from './lib/cloud'
+import { initCloud, setNotifier } from './lib/cloud'
+import { toast } from './components/ui'
+
+setNotifier(toast)
 
 initCloud()
 

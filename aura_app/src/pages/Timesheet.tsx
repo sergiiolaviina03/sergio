@@ -38,7 +38,7 @@ export function TimesheetPage() {
   })
 
   const exportPdf = async () => {
-    const blob = timesheetPdf(emp, cap(fmt(month, 'MMMM yyyy')), rows.filter((r) => !r.future && (r.p || r.sm.punches.length)).map((r) => ({ k: r.k, punches: r.sm.punches, planned: r.p })), (id) => (id ? s.zones.find((z) => z.id === id)?.name.split(' · ')[0] ?? '' : id === null ? 'Remoto/fuera' : '—'))
+    const blob = await timesheetPdf(emp, cap(fmt(month, 'MMMM yyyy')), rows.filter((r) => !r.future && (r.p || r.sm.punches.length)).map((r) => ({ k: r.k, punches: r.sm.punches, planned: r.p })), (id) => (id ? s.zones.find((z) => z.id === id)?.name.split(' · ')[0] ?? '' : id === null ? 'Remoto/fuera' : '—'))
     const ok = await saveFile(`registro-jornada-${emp.name.replace(/\s/g, '_')}-${mk}.pdf`, blob)
     toast(ok ? { title: 'Registro de jornada en PDF descargado' } : { title: 'No se pudo descargar', tone: 'warn' })
   }

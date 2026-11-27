@@ -1,5 +1,7 @@
 // PDFs generados en el propio dispositivo (jsPDF, libre): documentos firmados, nóminas y registro de jornada.
-import { jsPDF } from 'jspdf'
+import type { jsPDF } from 'jspdf'
+// jsPDF se carga solo al generar el primer PDF
+const newPdf = async () => new (await import('jspdf')).jsPDF({ unit: 'pt', format: 'a4' })
 import type { Employee, HRDocument, Punch } from '../types'
 import type { Payslip } from './payroll'
 import { eur } from './payroll'
@@ -73,7 +75,7 @@ async function pngFromImage(src: string): Promise<string> {
 }
 
 export async function signedDocPdf(doc: HRDocument, emps: Employee[], onlyEmp?: string): Promise<Blob> {
-  const pdf = new jsPDF({ unit: 'pt', format: 'a4' })
+  const pdf = await newPdf()
   let y = header(pdf, doc.title, `Publicado el ${fmt(doc.createdAt, "d 'de' MMMM yyyy")} · Huella del documento SHA-256 ${doc.hash.slice(0, 32)}…`)
   pdf.setTextColor(...INK)
   for (const block of doc.body.split('\n\n')) {
@@ -120,8 +122,8 @@ export async function signedDocPdf(doc: HRDocument, emps: Employee[], onlyEmp?: 
   return pdf.output('blob')
 }
 
-export function payslipPdf(emp: Employee, p: Payslip, monthLabel: string): Blob {
-  const pdf = new jsPDF({ unit: 'pt', format: 'a4' })
+export async function payslipPdf(emp: Employee, p: Payslip, monthLabel: string): Promise<Blob> {
+  const pdf = await newPdf()
   let y = header(pdf, `Recibo de salarios · ${monthLabel}`, `${emp.name} · ${emp.role} · ${emp.contract === 'indefinido' ? 'Indefinido' : 'Temporal'} · ${emp.pagas} pagas · CCC ${COMPANY.ccc}`)
   const table = (title: string, lines: { concept: string; amount: number; rate?: number; base?: number }[], neg: boolean, total: number) => {
     pdf.setFont('helvetica', 'bold')
@@ -167,8 +169,8 @@ export function payslipPdf(emp: Employee, p: Payslip, monthLabel: string): Blob 
   return pdf.output('blob')
 }
 
-export function timesheetPdf(emp: Employee, monthLabel: string, days: { k: string; punches: Punch[]; planned: number }[], zoneName: (id?: string | null) => string): Blob {
-  const pdf = new jsPDF({ unit: 'pt', format: 'a4' })
+export async function timesheetPdf(emp: Employee, monthLabel: string, days: { k: string; punches: Punch[]; planned: number }[], zoneName: (id?: string | null) => string): Promise<Blob> {
+  const pdf = await newPdf()
   let y = header(pdf, `Registro de jornada · ${monthLabel}`, `${emp.name} · ${emp.role} · jornada ${emp.weeklyHours} h/semana · art. 34.9 ET`)
   const cols = [40, 120, 170, 220, 290, 350, 410]
   pdf.setFontSize(8)

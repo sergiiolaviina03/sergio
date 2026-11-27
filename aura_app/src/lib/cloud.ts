@@ -8,6 +8,10 @@ import { uid } from './rng'
 import { sha256 } from './sha256'
 import { COMPANY } from '../data/seed'
 
+// Avisos sin importar la capa de interfaz (evita dependencias circulares)
+let notify: (t: { title: string; body?: string; tone?: 'bad' | 'warn' }) => void = () => {}
+export const setNotifier = (f: typeof notify) => (notify = f)
+
 export type Role = 'admin' | 'manager' | 'employee'
 type CloudState = {
   client?: SupabaseClient
@@ -290,7 +294,7 @@ async function pushChanges() {
 let lastCompany: unknown = null
 
 function report(msg: string) {
-  import('../components/ui').then(({ toast }) => toast({ title: 'No se pudo guardar en el servidor', body: /row-level|permission/i.test(msg) ? 'No tienes permiso para este cambio.' : msg, tone: 'bad' }))
+  notify({ title: 'No se pudo guardar en el servidor', body: /row-level|permission/i.test(msg) ? 'No tienes permiso para este cambio.' : msg, tone: 'bad' })
   setTimeout(loadAll, 800)
 }
 
@@ -358,7 +362,7 @@ export async function flushOutbox() {
       if (/fetch|network|Failed/i.test(error.message)) break
       box = box.filter((x) => x.id !== d.id)
       useStore.setState({ punches: useStore.getState().punches.filter((x) => x.id !== d.id) })
-      import('../components/ui').then(({ toast }) => toast({ title: 'Fichaje rechazado por el servidor', body: error.message, tone: 'bad' }))
+      notify({ title: 'Fichaje rechazado por el servidor', body: error.message, tone: 'bad' })
     } else {
       box = box.filter((x) => x.id !== d.id)
       applyRemotePunch(rowToPunch(data as PunchRow))
