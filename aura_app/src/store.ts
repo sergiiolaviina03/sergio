@@ -37,6 +37,7 @@ type State = {
   documents: HRDocument[]
   shifts: Shift[]
   setShifts: (fn: (s: Shift[]) => Shift[]) => void
+  importPunches: (drafts: Omit<Punch, 'seq' | 'prevHash' | 'hash'>[]) => Promise<number>
   company: Company
   qrSecret: string
   setCompany: (c: Partial<Company>) => void
@@ -188,6 +189,11 @@ export const useStore = create<State>()(
       upsertEmployee: (e) => set({ employees: get().employees.some((x) => x.id === e.id) ? get().employees.map((x) => (x.id === e.id ? e : x)) : [...get().employees, e], periods: ensurePeriods(get().periods, [e]) }),
       removeEmployee: (id) => set({ employees: get().employees.filter((e) => e.id !== id) }),
       setShifts: (fn) => set({ shifts: fn(get().shifts) }),
+      importPunches: async (drafts) => {
+        const sorted = [...drafts].sort((a, b) => a.ts - b.ts)
+        set({ punches: [...get().punches, ...sealChain(sorted, get().punches.filter((p) => p.seq > 0).at(-1))] })
+        return sorted.length
+      },
       reset: () => set(initial()),
     }),
     {

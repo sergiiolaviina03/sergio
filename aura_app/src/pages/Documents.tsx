@@ -9,12 +9,13 @@ import { SignaturePad } from '../components/SignaturePad'
 import { cap, dayKey, fmt, parseDay } from '../lib/time'
 import { signedDocPdf } from '../lib/pdf'
 import { saveFile } from '../lib/platform'
+import { getFile } from '../lib/files'
 import { TEMPLATES, summarizeDoc } from '../data/templates'
 import { sha256 } from '../lib/sha256'
 import { short } from '../lib/ledger'
 import { create } from 'zustand'
 
-const CAT: Record<DocCategory, string> = { contrato: 'Contratos', politica: 'Políticas', registro: 'Registro de jornada', anexo: 'Anexos', otros: 'Otros' }
+export const CAT: Record<DocCategory, string> = { contrato: 'Contratos', nomina: 'Nóminas', personal: 'Documentación personal', politica: 'Políticas', registro: 'Registro de jornada', anexo: 'Anexos', otros: 'Otros' }
 
 export const useSignFlow = create<{ docId?: string; open: (id: string) => void; close: () => void }>((set) => ({ open: (docId) => set({ docId }), close: () => set({ docId: undefined }) }))
 
@@ -86,7 +87,7 @@ export function DocumentsPage() {
       {tab === 'all' && (
         <div className="grid lg:grid-cols-[240px_1fr] gap-5">
           <div className="card p-2 h-fit">
-            {(['all', 'contrato', 'politica', 'registro', 'anexo'] as const).map((c) => {
+            {(['all', 'contrato', 'nomina', 'personal', 'politica', 'registro', 'anexo', 'otros'] as const).map((c) => {
               const n = c === 'all' ? mine.length : mine.filter((d) => d.category === c).length
               return (
                 <button key={c} onClick={() => setFolder(c)} className={cx('w-full flex items-center gap-2.5 px-3 h-10 rounded-xl text-sm transition', folder === c ? 'bg-sunken font-medium' : 'text-muted hover:bg-sunken/60')}>
@@ -149,6 +150,29 @@ export function DocumentsPage() {
         </div>
       )}
       <Compose open={compose} onClose={() => setCompose(false)} />
+    </div>
+  )
+}
+
+function AttachmentView({ att }: { att: NonNullable<HRDocument['attachment']> }) {
+  const [url, setUrl] = useState<string>()
+  const [busy, setBusy] = useState(false)
+  const open = async () => {
+    if (!att.fileId) return
+    setBusy(true)
+    const b = await getFile(att.fileId)
+    setBusy(false)
+    if (!b) return toast({ title: 'No se encontró el archivo', tone: 'warn' })
+    setUrl(URL.createObjectURL(b))
+  }
+  return (
+    <div className="mt-4 rounded-xl border border-line bg-surface p-3">
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <Paperclip size={14} /> <span className="font-medium">{att.name}</span> <span className="text-muted">· {(att.size / 1024).toFixed(0)} KB{att.hash && ` · huella ${short(att.hash)}`}</span>
+        {att.fileId && !url && <button className="btn-outline h-8 text-xs ml-auto" onClick={open} disabled={busy}>{busy ? <Loader2 size={13} className="animate-spin" /> : <FileText size={13} />} Ver archivo</button>}
+        {url && <button className="btn-outline h-8 text-xs ml-auto" onClick={async () => saveFile(att.name, await (await fetch(url)).blob())}><Download size={13} /> Descargar</button>}
+      </div>
+      {url && (att.type?.startsWith('image/') ? <img src={url} alt={att.name} className="mt-3 max-h-[60vh] rounded-lg mx-auto" /> : att.type === 'application/pdf' || att.name.endsWith('.pdf') ? <iframe src={url} title={att.name} className="mt-3 w-full h-[60vh] rounded-lg border border-line" /> : null)}
     </div>
   )
 }
@@ -232,7 +256,7 @@ export function SignFlow() {
                     {b.split('\n').map((l, j) => (l.startsWith('## ') ? <h4 key={j} className="font-semibold text-ink mt-2 mb-1">{l.slice(3)}</h4> : <p key={j} className="text-ink/85">{l}</p>))}
                   </div>
                 ))}
-                {doc.attachment && <div className="mt-4 flex items-center gap-2 text-sm"><Paperclip size={14} /> {doc.attachment.name} · {(doc.attachment.size / 1024).toFixed(0)} KB · huella {short(doc.attachment.hash)}</div>}
+                {doc.attachment && <AttachmentView att={doc.attachment} />}
               </div>
               <div className="absolute left-0 right-0 bottom-0 h-1 rounded-b-2xl bg-line overflow-hidden"><div className="h-full bg-brand transition-all" style={{ width: `${progress * 100}%` }} /></div>
             </div>

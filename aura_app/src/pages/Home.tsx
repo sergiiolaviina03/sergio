@@ -64,7 +64,7 @@ export function HomePage() {
       const x = addDays(d, i)
       const kk = dayKey(x)
       if (HOLIDAYS[kk]) ev.push({ d: x, title: HOLIDAYS[kk], icon: <PartyPopper size={14} />, tone: 'text-brand bg-brand/10' })
-      for (const e of s.employees) if (e.birthday === kk.slice(5)) ev.push({ d: x, title: `Cumpleaños de ${e.name.split(' ')[0]}`, icon: <CalendarHeart size={14} />, tone: 'text-pink-500 bg-pink-500/10' })
+      for (const e of s.employees) if (e.birthday && e.birthday === kk.slice(5)) ev.push({ d: x, title: `Cumpleaños de ${e.name.split(' ')[0]}`, icon: <CalendarHeart size={14} />, tone: 'text-pink-500 bg-pink-500/10' })
     }
     for (const r of s.requests) if (r.status === 'approved' && r.from >= k && r.from <= dayKey(addDays(d, 45))) {
       const e = s.employees.find((x) => x.id === r.empId)!

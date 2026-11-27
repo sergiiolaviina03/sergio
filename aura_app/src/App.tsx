@@ -4,6 +4,8 @@ import { Copilot } from './components/Copilot'
 import { ClockFlow } from './components/ClockFlow'
 import { Toaster } from './components/ui'
 import { SignFlow, MandatoryGate } from './pages/Documents'
+import { cloud } from './lib/cloud'
+import { AuthScreen, ErrorScreen, LoadingScreen, Onboarding } from './components/Auth'
 import { useNav } from './lib/nav'
 import { useStore } from './store'
 import { useDark } from './lib/hooks'
@@ -25,9 +27,10 @@ const DocumentsPage = lazy(() => import('./pages/Documents').then((m) => ({ defa
 const ExpensesPage = lazy(() => import('./pages/Expenses').then((m) => ({ default: m.ExpensesPage })))
 const PeoplePage = lazy(() => import('./pages/People').then((m) => ({ default: m.PeoplePage })))
 const ShiftsPage = lazy(() => import('./pages/Shifts').then((m) => ({ default: m.ShiftsPage })))
+const ImportPage = lazy(() => import('./pages/Import').then((m) => ({ default: m.ImportPage })))
 const KioskPage = lazy(() => import('./pages/Kiosk').then((m) => ({ default: m.KioskPage })))
 
-const PAGES = { home: HomePage, clock: ClockPage, timesheet: TimesheetPage, timeoff: TimeOffPage, payroll: PayrollPage, documents: DocumentsPage, expenses: ExpensesPage, people: PeoplePage, shifts: ShiftsPage, team: TeamPage, inbox: InboxPage, ledger: LedgerPage, settings: SettingsPage, kiosk: KioskPage }
+const PAGES = { home: HomePage, clock: ClockPage, timesheet: TimesheetPage, timeoff: TimeOffPage, payroll: PayrollPage, documents: DocumentsPage, expenses: ExpensesPage, people: PeoplePage, shifts: ShiftsPage, import: ImportPage, team: TeamPage, inbox: InboxPage, ledger: LedgerPage, settings: SettingsPage, kiosk: KioskPage }
 
 export default function App() {
   const page = useNav((s) => s.page)
@@ -55,7 +58,12 @@ export default function App() {
     const i = setInterval(topUp, 60_000)
     return () => clearInterval(i)
   }, [topUp])
-  const managerOnly = ['team', 'inbox', 'kiosk', 'people', 'shifts']
+  const managerOnly = ['team', 'inbox', 'kiosk', 'people', 'shifts', 'import']
+  const status = cloud((c) => c.status)
+  if (status === 'loading') return <LoadingScreen />
+  if (status === 'auth') return <><AuthScreen /><Toaster /></>
+  if (status === 'onboarding') return <><Onboarding /><Toaster /></>
+  if (status === 'error') return <ErrorScreen />
   const P = (managerOnly.includes(page) && viewAs !== 'manager' ? HomePage : PAGES[page]) ?? HomePage
   return (
     <>

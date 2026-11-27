@@ -4,7 +4,7 @@ import type { PunchType } from '../types'
 import { addDays, startOfWeek } from 'date-fns'
 import { dayKey } from './time'
 
-export type Page = 'home' | 'clock' | 'timesheet' | 'timeoff' | 'payroll' | 'documents' | 'expenses' | 'people' | 'shifts' | 'team' | 'inbox' | 'ledger' | 'settings' | 'kiosk'
+export type Page = 'home' | 'clock' | 'timesheet' | 'timeoff' | 'payroll' | 'documents' | 'expenses' | 'people' | 'shifts' | 'import' | 'team' | 'inbox' | 'ledger' | 'settings' | 'kiosk'
 
 export type Intent =
   | { kind: 'clock'; type: PunchType }

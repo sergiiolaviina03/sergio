@@ -7,6 +7,8 @@ import { eur } from '../lib/payroll'
 import { uid } from '../lib/rng'
 import { saveFile } from '../lib/platform'
 import { dayKey, fmt, parseDay } from '../lib/time'
+import { cloud, createInvite, type Role } from '../lib/cloud'
+import { Send, Copy } from 'lucide-react'
 
 const DAYS = ['L', 'M', 'X', 'J', 'V']
 
@@ -18,7 +20,7 @@ export function PeoplePage() {
   const [edit, setEdit] = useState<Employee | null>(null)
   const teams = [...new Set(s.employees.map((e) => e.team))]
   const list = s.employees.filter((e) => (team === 'all' || e.team === team) && (e.name + e.role).toLowerCase().includes(q.toLowerCase()))
-  const blank = (): Employee => ({ id: uid('e_'), name: '', role: '', team: teams[0] ?? 'General', managerId: s.meId, zoneId: s.zones[0]?.id ?? '', hue: Math.floor(Math.random() * 360), salary: 30000, pagas: 14, contract: 'indefinido', weeklyHours: 40, start: '09:00', end: '18:00', breakMin: 60, remoteDays: [], pin: String(Math.floor(1000 + Math.random() * 9000)), birthday: '01-01', hiredAt: dayKey(new Date()), children: 0 })
+  const blank = (): Employee => ({ id: uid('e_'), name: '', role: '', team: teams[0] ?? 'General', managerId: s.meId, zoneId: s.zones[0]?.id ?? '', hue: Math.floor(Math.random() * 360), salary: 30000, pagas: 14, contract: 'indefinido', weeklyHours: 40, start: '09:00', end: '18:00', breakMin: 60, remoteDays: [], pin: String(Math.floor(1000 + Math.random() * 9000)), birthday: '', hiredAt: dayKey(new Date()), children: 0 })
 
   const exportCsv = () => {
     const rows = [['Nombre', 'Puesto', 'Equipo', 'Responsable', 'Centro', 'Contrato', 'Jornada', 'Horario', 'Teletrabajo', 'Alta', 'Salario bruto'], ...s.employees.map((e) => [e.name, e.role, e.team, s.employees.find((m) => m.id === e.managerId)?.name ?? '', s.zones.find((z) => z.id === e.zoneId)?.name ?? '', e.contract, `${e.weeklyHours} h`, `${e.start}-${e.end}`, e.remoteDays.map((d) => DAYS[d - 1]).join(''), e.hiredAt, e.salary])]
@@ -50,7 +52,7 @@ export function PeoplePage() {
             <table className="w-full text-sm min-w-[820px]">
               <thead>
                 <tr className="text-xs text-muted text-left border-b border-line bg-sunken/50">
-                  <th className="font-medium px-4 h-10">Persona</th><th className="font-medium">Equipo</th><th className="font-medium">Centro</th><th className="font-medium">Horario</th><th className="font-medium">Teletrabajo</th><th className="font-medium">Contrato</th><th className="font-medium text-right">Bruto anual</th><th className="w-20" />
+                  <th className="font-medium px-4 h-10">Persona</th><th className="font-medium">Equipo</th><th className="font-medium">Centro</th><th className="font-medium">Horario</th><th className="font-medium">Teletrabajo</th><th className="font-medium">Contrato</th><th className="font-medium text-right">Bruto anual</th><th className="w-40" />
                 </tr>
               </thead>
               <tbody>
@@ -63,7 +65,7 @@ export function PeoplePage() {
                     <td><div className="flex gap-0.5">{DAYS.map((d, i) => <span key={d} className={cx('h-5 w-5 rounded text-[10px] grid place-items-center', e.remoteDays.includes(i + 1) ? 'bg-ok/15 text-ok font-semibold' : 'bg-sunken text-muted')}>{d}</span>)}</div></td>
                     <td><span className={cx('chip', e.contract === 'indefinido' ? 'bg-brand/10 text-brand' : 'bg-warn/10 text-warn')}>{e.contract}</span></td>
                     <td className="text-right tabular-nums">{eur(e.salary, 0)}</td>
-                    <td className="pr-3 text-right"><button className="btn-ghost h-8 w-8 px-0 opacity-0 group-hover:opacity-100" onClick={() => setEdit(e)} aria-label="Editar"><Pencil size={14} /></button></td>
+                    <td className="pr-3 text-right whitespace-nowrap"><InviteCell emp={e} /><button className="btn-ghost h-8 w-8 px-0 opacity-0 group-hover:opacity-100" onClick={() => setEdit(e)} aria-label="Editar"><Pencil size={14} /></button></td>
                   </tr>
                 ))}
               </tbody>
@@ -75,6 +77,39 @@ export function PeoplePage() {
       {tab === 'company' && <CompanyForm />}
       <EmployeeForm emp={edit} onClose={() => setEdit(null)} />
     </div>
+  )
+}
+
+function InviteCell({ emp }: { emp: Employee }) {
+  const c = cloud()
+  const [inv, setInv] = useState<{ code: string; link: string }>()
+  const [role, setRole] = useState<Role>('employee')
+  if (c.status !== 'ready') return null
+  if (c.members.some((m) => m.employee_id === emp.id)) return <span className="chip bg-ok/10 text-ok mr-1">Con acceso</span>
+  const make = async () => {
+    try {
+      const r = await createInvite(emp.id, role)
+      setInv(r)
+    } catch (e) {
+      toast({ title: 'No se pudo crear la invitación', body: (e as Error).message, tone: 'bad' })
+    }
+  }
+  const copy = async () => {
+    const text = `Hola ${emp.name.split(' ')[0]}, te invito a Aura para fichar y gestionar tus ausencias y documentos. Entra aquí: ${inv!.link} (código ${inv!.code})`
+    try {
+      await navigator.clipboard.writeText(text)
+      toast({ title: 'Invitación copiada', body: 'Pégala en un email o WhatsApp.' })
+    } catch {
+      toast({ title: `Código: ${inv!.code}`, body: inv!.link })
+    }
+  }
+  return inv ? (
+    <button className="chip h-7 px-2.5 bg-brand/10 text-brand mr-1 font-mono" onClick={copy} title={inv.link}><Copy size={11} /> {inv.code}</button>
+  ) : (
+    <span className="inline-flex items-center gap-1 mr-1">
+      {c.role === 'admin' && <select className="input h-7 w-auto text-[11px] py-0" value={role} onChange={(e) => setRole(e.target.value as Role)} aria-label="Rol"><option value="employee">Empleado</option><option value="manager">Responsable</option><option value="admin">Admin</option></select>}
+      <button className="chip h-7 px-2.5 bg-sunken border border-line text-ink hover:bg-brand/10" onClick={make}><Send size={11} /> Invitar</button>
+    </span>
   )
 }
 
@@ -189,7 +224,7 @@ function EmployeeForm({ emp, onClose }: { emp: Employee | null; onClose: () => v
       </div>
       <div className="grid grid-cols-2 gap-3 mt-3">
         <div><label className="label" htmlFor={id('pin')}>PIN de quiosco</label><input id={id('pin')} className={cx('input font-mono', pinTaken && 'border-bad')} maxLength={4} value={f.pin} onChange={(e) => up({ pin: e.target.value.replace(/\D/g, '').slice(0, 4) })} />{pinTaken && <div className="text-xs text-bad mt-1">Ese PIN ya lo usa otra persona</div>}</div>
-        <div><label className="label" htmlFor={id('bd')}>Cumpleaños</label><input id={id('bd')} type="date" className="input" value={`2000-${f.birthday}`} onChange={(e) => up({ birthday: e.target.value.slice(5) })} /></div>
+        <div><label className="label" htmlFor={id('bd')}>Cumpleaños</label><input id={id('bd')} type="date" className="input" value={f.birthday ? `2000-${f.birthday}` : ''} onChange={(e) => up({ birthday: e.target.value.slice(5) })} /></div>
       </div>
       <div className="flex items-center gap-2 mt-6">
         {exists && f.id !== s.meId && (confirmDel ? (

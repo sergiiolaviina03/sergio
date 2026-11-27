@@ -9,6 +9,7 @@ import { Avatar, cx } from './ui'
 import { useDark, useToday } from '../lib/hooks'
 import { clock, fmt } from '../lib/time'
 import { usePendingDocs } from '../pages/Documents'
+import { cloud } from '../lib/cloud'
 
 type Item = { id: Page; label: string; icon: ReactNode; badge?: number; manager?: boolean; alert?: boolean }
 
@@ -33,6 +34,8 @@ export function Layout({ children }: { children: ReactNode }) {
   const [bell, setBell] = useState(false)
   const unread = notices.filter((n) => !n.read).length
   const manager = settings.viewAs === 'manager'
+  const cl = cloud()
+  const canSwitch = cl.status !== 'ready' || cl.role !== 'employee'
 
   const groups: { title?: string; items: Item[] }[] = [
     { items: [{ id: 'home', label: 'Inicio', icon: <Home size={17} /> }, { id: 'inbox', label: 'Bandeja', icon: <Inbox size={17} />, badge: inbox, manager: true }] },
@@ -96,13 +99,18 @@ export function Layout({ children }: { children: ReactNode }) {
         </button>
         <div className="flex-1 overflow-auto -mx-1 px-1">{nav}</div>
         <MiniStatus />
+        <SyncBadge />
         <div className="flex items-center gap-2.5 px-2">
           <Avatar emp={me} size={32} />
           <div className="flex-1 min-w-0 leading-tight">
             <div className="text-sm font-medium truncate">{me.name}</div>
-            <button onClick={() => setSettings({ viewAs: manager ? 'employee' : 'manager' })} className="text-[11px] text-muted hover:text-brand">
-              Vista {manager ? 'responsable' : 'empleado'} · cambiar
-            </button>
+            {canSwitch ? (
+              <button onClick={() => setSettings({ viewAs: manager ? 'employee' : 'manager' })} className="text-[11px] text-muted hover:text-brand">
+                Vista {manager ? 'responsable' : 'empleado'} · cambiar
+              </button>
+            ) : (
+              <div className="text-[11px] text-muted">{me.role}</div>
+            )}
           </div>
           <button onClick={() => setSettings({ theme: dark ? 'light' : 'dark' })} className="h-8 w-8 rounded-lg hover:bg-sunken grid place-items-center text-muted" aria-label="Cambiar tema">
             {dark ? <Sun size={16} /> : <Moon size={16} />}
@@ -178,6 +186,17 @@ export function Layout({ children }: { children: ReactNode }) {
           )}
         </div>
       </div>
+    </div>
+  )
+}
+
+function SyncBadge() {
+  const c = cloud()
+  if (c.status !== 'ready') return <div className="mx-1 text-[11px] text-muted px-3 flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-warn" /> Modo demostración · datos en este dispositivo</div>
+  return (
+    <div className="mx-1 text-[11px] text-muted px-3 flex items-center gap-1.5">
+      <span className={cx('h-1.5 w-1.5 rounded-full', !c.online ? 'bg-bad' : c.pending ? 'bg-warn animate-pulse' : 'bg-ok')} />
+      {!c.online ? `Sin conexión${c.pending ? ` · ${c.pending} fichaje${c.pending > 1 ? 's' : ''} en cola` : ''}` : c.pending ? `Sellando ${c.pending} fichaje${c.pending > 1 ? 's' : ''}…` : 'Sincronizado'}
     </div>
   )
 }

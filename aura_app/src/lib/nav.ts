@@ -11,7 +11,7 @@ export const takeQr = () => {
 }
 
 // Rutas con hash simple (#jornada) para que funcionen también como enlace compartido.
-const SLUG: Record<Page, string> = { home: 'inicio', clock: 'jornada', timesheet: 'hoja', timeoff: 'ausencias', payroll: 'nominas', documents: 'documentos', expenses: 'gastos', people: 'personas', shifts: 'turnos', team: 'equipo', inbox: 'bandeja', ledger: 'registro', settings: 'ajustes', kiosk: 'quiosco' }
+const SLUG: Record<Page, string> = { home: 'inicio', clock: 'jornada', timesheet: 'hoja', timeoff: 'ausencias', payroll: 'nominas', documents: 'documentos', expenses: 'gastos', people: 'personas', shifts: 'turnos', import: 'importar', team: 'equipo', inbox: 'bandeja', ledger: 'registro', settings: 'ajustes', kiosk: 'quiosco' }
 const BY_SLUG = Object.fromEntries(Object.entries(SLUG).map(([k, v]) => [v, k])) as Record<string, Page>
 
 const read = (): Page => {

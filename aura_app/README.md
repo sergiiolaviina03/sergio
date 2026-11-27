@@ -41,14 +41,21 @@ Para probarlo en el móvil con GPS real hace falta HTTPS (o `localhost`). En la 
 | **Modo quiosco** | Pantalla para una tablet en la entrada de la oficina: fichaje con PIN. |
 | **Extras** | Modo oscuro, diseño adaptado a móvil, instalable (PWA) y funciona sin conexión. |
 
+## Servidor y migración
+
+- **Servidor (cuentas, empresas y datos compartidos):** guía en [`supabase/README.md`](supabase/README.md). El esquema [`supabase/schema.sql`](supabase/schema.sql) crea las tablas, los permisos por rol, el sellado de fichajes en el servidor (cadena SHA-256 verificable desde la app), las invitaciones, la firma de documentos y el almacenamiento de archivos. Sin servidor configurado, Aura arranca en modo demostración.
+- **Migración desde otro sistema:** *Ajustes → Importar desde otro sistema*. Acepta Excel, CSV, PDFs, imágenes y carpetas enteras; reconoce las columnas (en español o inglés), muestra una vista previa con errores y asigna cada documento a su persona por nombre o DNI. También importa copias completas de otra instalación de Aura (*Ajustes → Exportar copia completa*).
+- **Publicación:** cada cambio en `aura_app/` se publica con GitHub Pages mediante `.github/workflows/aura-pages.yml`.
+
 ## Estado y siguientes pasos
 
-Esta versión guarda los datos en el navegador (`localStorage`) con una empresa ficticia de demostración, así que se puede usar y enseñar ya sin servidor. Para venderla a empresas:
+Pendiente para venderla a empresas:
 
-1. **Backend y base de datos** (p. ej. Supabase o Postgres + API) con autenticación, multiempresa y permisos por rol. El sellado debe hacerse también en servidor, con sello de tiempo de confianza.
+1. **Servidor en producción**: plan de pago o autoalojado, SMTP propio, copias de seguridad, y opcionalmente un sello de tiempo cualificado (TSA) sobre la cabeza de la cadena cada día.
 2. **Nómina oficial**: tablas de bases por grupo de cotización, convenios, regularización de IRPF, ficheros SILTRA/RED y modelos 111/190. Los cálculos actuales son una estimación orientativa.
 3. **Normativa**: el reglamento del registro de jornada digital estaba pendiente de publicación en el BOE; revisar el texto final (acceso remoto de la Inspección, formatos de exportación) y adaptar.
-4. **Mapas**: las teselas de OpenStreetMap sirven para demos y uso ligero; para clientes, usar un proveedor de teselas contratado o autoalojar PMTiles (cambiar `TILE_URL` en `src/components/MapView.tsx`).
-5. **Privacidad (RGPD)**: informar a la plantilla, base legal del tratamiento de la ubicación y la imagen, plazos de conservación (4 años para el registro de jornada).
+4. **Festivos**: ahora incluye los nacionales y los de Madrid; falta el calendario por comunidad autónoma y municipio de cada centro.
+5. **Mapas**: las teselas de OpenStreetMap sirven para demos y uso ligero; para clientes, usar un proveedor de teselas contratado o autoalojar PMTiles (cambiar `TILE_URL` en `src/components/MapView.tsx`).
+6. **Privacidad (RGPD)**: informar a la plantilla, base legal del tratamiento de la ubicación y la imagen, plazos de conservación (4 años para el registro de jornada).
 
 Los festivos incluidos son los nacionales y de la Comunidad de Madrid (aproximados) para 2026–2027.

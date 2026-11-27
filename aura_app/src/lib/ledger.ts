@@ -26,17 +26,21 @@ export function sealChain(rows: Omit<Punch, 'seq' | 'prevHash' | 'hash'>[], star
 
 export type VerifyResult = { ok: boolean; checked: number; brokenAt?: number; reason?: string; head: string; ms: number }
 
-export function verify(chain: Punch[]): VerifyResult {
+export function verify(all: Punch[]): VerifyResult {
   const t0 = performance.now()
-  let prevHash = GENESIS
+  // Los fichajes pendientes de sellar en el servidor (seq 0) aún no forman parte de la cadena.
+  // Si solo vemos parte de la cadena (p. ej. un empleado ve sus fichajes), se verifica cada sello
+  // y los enlaces entre asientos consecutivos.
+  const chain = all.filter((p) => p.seq > 0).sort((a, b) => a.seq - b.seq)
+  let prev: Punch | undefined
   for (let i = 0; i < chain.length; i++) {
     const p = chain[i]
-    if (p.prevHash !== prevHash) return { ok: false, checked: i, brokenAt: p.seq, reason: 'Enlace roto con el registro anterior', head: prevHash, ms: performance.now() - t0 }
-    const h = sha256(canonical(p))
-    if (h !== p.hash) return { ok: false, checked: i, brokenAt: p.seq, reason: 'El contenido no coincide con su sello', head: prevHash, ms: performance.now() - t0 }
-    prevHash = p.hash
+    const expectPrev = prev ? (p.seq === prev.seq + 1 ? prev.hash : null) : p.seq === 1 ? GENESIS : null
+    if (expectPrev !== null && p.prevHash !== expectPrev) return { ok: false, checked: i, brokenAt: p.seq, reason: 'Enlace roto con el registro anterior', head: prev?.hash ?? GENESIS, ms: performance.now() - t0 }
+    if (sha256(canonical(p)) !== p.hash) return { ok: false, checked: i, brokenAt: p.seq, reason: 'El contenido no coincide con su sello', head: prev?.hash ?? GENESIS, ms: performance.now() - t0 }
+    prev = p
   }
-  return { ok: true, checked: chain.length, head: prevHash, ms: performance.now() - t0 }
+  return { ok: true, checked: chain.length, head: prev?.hash ?? GENESIS, ms: performance.now() - t0 }
 }
 
 export const short = (h: string) => `${h.slice(0, 6)}…${h.slice(-4)}`

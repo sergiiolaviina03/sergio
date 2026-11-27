@@ -61,7 +61,7 @@ export function absenceOn(empId: string, k: string, reqs: TimeOffRequest[]) {
 
 export function plannedMin(emp: Employee, day: Date, reqs: TimeOffRequest[]) {
   const k = dayKey(day)
-  if (HOLIDAYS[k]) return 0
+  if (HOLIDAYS[k] || (emp.hiredAt && k < emp.hiredAt)) return 0
   if (isoDow(day) > 5 && !useStore.getState?.().shifts?.some((x) => x.empId === emp.id && x.published && x.date === k)) return 0
   let daily = (emp.weeklyHours / 5) * 60
   // Si hay cuadrante publicado para esa semana, manda el cuadrante (incluido el fin de semana)

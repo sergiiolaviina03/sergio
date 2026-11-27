@@ -9,6 +9,7 @@ import { LABEL } from '../components/ClockFlow'
 import { COMPANY } from '../data/seed'
 import { sha256 } from '../lib/sha256'
 import { saveFile } from '../lib/platform'
+import { isCloud } from '../lib/cloud'
 
 export function LedgerPage() {
   const s = useStore()
@@ -135,7 +136,9 @@ export function LedgerPage() {
           </Section>
           <Section title="Pruébalo tú" icon={<FlaskConical size={15} />}>
             <p className="text-sm text-muted mb-3">Simula que alguien edita a escondidas una de tus salidas para regalarse 47 minutos, y verifica.</p>
-            {s.tampered ? (
+            {isCloud() ? (
+              <p className="text-xs text-muted">Con servidor, la cadena se sella en la base de datos y nadie (ni un administrador desde la app) puede modificar o borrar un fichaje: no hay permiso de edición. La simulación solo está disponible en la demostración.</p>
+            ) : s.tampered ? (
               <button className="btn-outline w-full" onClick={() => { s.untamper(); setRes(undefined) }}><RotateCcw size={15} /> Restaurar registro original</button>
             ) : (
               <button className="btn-outline w-full text-bad" onClick={() => { s.tamper(); setRes(undefined); toast({ title: 'Registro manipulado (simulación)', body: 'Ahora pulsa «Verificar integridad».', tone: 'warn' }) }}><FlaskConical size={15} /> Manipular un fichaje</button>

@@ -1,5 +1,5 @@
 export type PunchType = 'in' | 'out' | 'break_start' | 'break_end'
-export type Method = 'app' | 'kiosk' | 'copilot' | 'correction' | 'qr'
+export type Method = 'app' | 'kiosk' | 'copilot' | 'correction' | 'qr' | 'import'
 
 export type Zone = { id: string; name: string; address: string; lat: number; lng: number; radius: number; color: string }
 
@@ -23,6 +23,9 @@ export type Employee = {
   birthday: string // MM-DD
   hiredAt: string // YYYY-MM-DD
   children: number
+  email?: string
+  dni?: string
+  phone?: string
 }
 
 export type Punch = {
@@ -55,7 +58,7 @@ export type Period = { empId: string; month: string; status: 'open' | 'submitted
 export type Notice = { id: string; ts: number; title: string; body?: string; read?: boolean; icon?: string }
 
 export type Signature = { empId: string; ts: number; image: string; hash: string; method: 'drawn' | 'typed'; readSeconds: number; device: string }
-export type DocCategory = 'contrato' | 'politica' | 'registro' | 'anexo' | 'otros'
+export type DocCategory = 'contrato' | 'nomina' | 'personal' | 'politica' | 'registro' | 'anexo' | 'otros'
 export type HRDocument = {
   id: string
   title: string
@@ -68,7 +71,7 @@ export type HRDocument = {
   createdAt: number
   createdBy: string
   hash: string
-  attachment?: { name: string; size: number; hash: string }
+  attachment?: { name: string; size: number; hash: string; fileId?: string; type?: string }
   signatures: Signature[]
 }
 

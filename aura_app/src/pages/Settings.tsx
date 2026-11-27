@@ -1,4 +1,8 @@
-import { Settings, MapPin, Plus, Trash2, RotateCcw, Radar, ShieldCheck, Palette } from 'lucide-react'
+import { Settings, MapPin, Plus, Trash2, RotateCcw, Radar, ShieldCheck, Palette, Server, LogOut, Upload, ArrowRight, Download } from 'lucide-react'
+import { saveFile } from '../lib/platform'
+import { dayKey } from '../lib/time'
+import { cloud, saveServerConfig, serverConfig, signOut, useDemo, demoForced } from '../lib/cloud'
+import { go } from '../lib/nav'
 import { useState } from 'react'
 import { useStore } from '../store'
 import { MapView } from '../components/MapView'
@@ -81,10 +85,26 @@ export function SettingsPage() {
           <Section title="Apariencia" icon={<Palette size={15} />}>
             <Tabs value={s.settings.theme} onChange={(v) => s.setSettings({ theme: v })} items={[{ id: 'light', label: 'Claro' }, { id: 'dark', label: 'Oscuro' }, { id: 'system', label: 'Sistema' }]} />
           </Section>
-          <Section title="Datos de demostración">
+          <ServerSection />
+          {manager && (
+            <button onClick={() => go('import')} className="card p-5 w-full text-left flex items-center gap-3 hover:shadow-pop transition">
+              <span className="h-10 w-10 rounded-xl bg-brand/10 text-brand grid place-items-center"><Upload size={18} /></span>
+              <div className="flex-1"><div className="font-medium">Importar desde otro sistema</div><div className="text-xs text-muted">Factorial, Sesame, Woffu, A3, Excel o copia de Aura: plantilla, fichajes, ausencias y documentos.</div></div>
+              <ArrowRight size={16} className="text-muted" />
+            </button>
+          )}
+          {manager && (
+            <button onClick={() => {
+              const st = useStore.getState()
+              const { employees, zones, requests, corrections, periods, documents, expenses, shifts, punches, company } = st
+              saveFile(`aura-copia-${dayKey(new Date())}.json`, JSON.stringify({ app: 'aura', version: 1, exportedAt: new Date().toISOString(), company, employees, zones, requests, corrections, periods, documents, expenses, shifts, punches }), 'application/json')
+              toast({ title: 'Copia completa exportada', body: 'Sirve para migrar a otra instalación de Aura o como respaldo.' })
+            }} className="btn-outline w-full"><Download size={15} /> Exportar copia completa</button>
+          )}
+          {cloud.getState().status !== 'ready' && <Section title="Datos de demostración">
             <p className="text-xs text-muted mb-3">Todo se guarda en este navegador. Puedes volver al estado inicial cuando quieras.</p>
             <button className="btn-outline w-full" onClick={() => setConfirmReset(true)}><RotateCcw size={15} /> Reiniciar demo</button>
-          </Section>
+          </Section>}
         </div>
       </div>
       <Modal open={confirmReset} onClose={() => setConfirmReset(false)} title="¿Reiniciar la demo?">
@@ -95,5 +115,38 @@ export function SettingsPage() {
         </div>
       </Modal>
     </div>
+  )
+}
+
+function ServerSection() {
+  const c = cloud()
+  const cfg = serverConfig()
+  const [url, setUrl] = useState(cfg?.url ?? '')
+  const [key, setKey] = useState('')
+  return (
+    <Section title="Servidor" icon={<Server size={15} />}>
+      {c.status === 'ready' ? (
+        <>
+          <div className="text-sm"><span className="chip bg-ok/10 text-ok mr-1.5">Conectado</span>{c.session?.user.email}</div>
+          <div className="text-xs text-muted mt-2">Rol: {c.role === 'admin' ? 'administrador' : c.role === 'manager' ? 'responsable' : 'empleado'} · {c.members.length} cuentas activas · {new URL(cfg!.url).host}</div>
+          <button className="btn-outline w-full mt-4" onClick={signOut}><LogOut size={15} /> Cerrar sesión</button>
+        </>
+      ) : demoForced() && cfg ? (
+        <>
+          <p className="text-sm text-muted">Estás viendo la demostración. Tu empresa está en {new URL(cfg.url).host}.</p>
+          <button className="btn-brand w-full mt-3" onClick={() => useDemo(false)}>Volver a mi empresa</button>
+        </>
+      ) : (
+        <>
+          <p className="text-sm text-muted mb-3">Conecta un servidor Supabase (gratuito para empezar, o autoalojado) para tener cuentas, varias personas y datos compartidos entre dispositivos. Las instrucciones están en <code className="text-xs">supabase/README.md</code>.</p>
+          <label className="label" htmlFor="srv-url">URL del proyecto</label>
+          <input id="srv-url" className="input" placeholder="https://xxxx.supabase.co" value={url} onChange={(e) => setUrl(e.target.value)} />
+          <label className="label mt-3" htmlFor="srv-key">Clave pública (anon)</label>
+          <input id="srv-key" className="input font-mono text-xs" placeholder="eyJhbGciOi…" value={key} onChange={(e) => setKey(e.target.value)} />
+          <button className="btn-brand w-full mt-3" disabled={!/^https:\/\//.test(url) || key.length < 20} onClick={() => saveServerConfig(url, key)}>Conectar</button>
+          {cfg && !cfg.fromEnv && <button className="btn-ghost w-full mt-1 text-xs" onClick={() => saveServerConfig('', null)}>Desconectar servidor guardado</button>}
+        </>
+      )}
+    </Section>
   )
 }
