@@ -6,6 +6,8 @@ export const hasCamera = typeof navigator !== 'undefined' && !!navigator.mediaDe
 /** Descarga un archivo generado en el dispositivo. */
 export async function saveFile(filename: string, data: Blob | string, type = 'application/octet-stream'): Promise<boolean> {
   const blob = typeof data === 'string' ? new Blob([data], { type }) : data
+  // En vistas previas incrustadas (iframes sin permiso de descarga) el enlace no hace nada: avisamos.
+  if ((window as unknown as { claude?: unknown }).claude) return false
   try {
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
